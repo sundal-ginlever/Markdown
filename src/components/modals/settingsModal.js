@@ -59,9 +59,10 @@ export const SettingsModal = {
       html = `
         <div class="fr"><label class="fl-lbl">GOOGLE AI API KEY (GEMINI)</label><input type="password" class="fi-inp" id="k-gemini" value="${S.ai.keys.gemini || ''}"></div>
         <div class="fr"><label class="fl-lbl">MODEL</label><select class="fi-inp" id="m-gemini">
-          <option value="gemini-1.5-pro" ${S.ai.models.gemini === 'gemini-1.5-pro' ? 'selected' : ''}>Gemini 1.5 Pro</option>
+          <option value="gemini-1.5-pro" ${S.ai.models.gemini === 'gemini-1.5-pro' ? 'selected' : ''}>Gemini 1.5 Pro (Stable)</option>
+          <option value="gemini-1.5-pro-latest" ${S.ai.models.gemini === 'gemini-1.5-pro-latest' ? 'selected' : ''}>Gemini 1.5 Pro (Latest)</option>
           <option value="gemini-1.5-flash" ${S.ai.models.gemini === 'gemini-1.5-flash' ? 'selected' : ''}>Gemini 1.5 Flash</option>
-          <option value="gemini-1.0-pro" ${S.ai.models.gemini === 'gemini-1.0-pro' ? 'selected' : ''}>Gemini 1.0 Pro</option>
+          <option value="gemini-pro" ${S.ai.models.gemini === 'gemini-pro' ? 'selected' : ''}>Gemini 1.0 Pro</option>
         </select></div>
       `;
     } else if (p === 'local') {
