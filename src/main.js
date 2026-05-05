@@ -57,7 +57,7 @@ async function init() {
   
   // Component Initializations
   Sidebar.init();
-  UploadModal.renderStyles();
+  UploadModal.init();
   SettingsModal.init();
   renderI18N();
   

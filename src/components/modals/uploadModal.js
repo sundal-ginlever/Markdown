@@ -5,18 +5,58 @@ import { S, STYLES } from '../../state/store.js';
 import { UI } from '../ui.js';
 
 export const UploadModal = {
+  init() {
+    const dz = document.getElementById('mo-dz');
+    const fi = document.getElementById('fi');
+    
+    // Click to upload
+    dz?.addEventListener('click', () => fi?.click());
+
+    // Drag and Drop
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+      dz?.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      document.body.addEventListener(evt, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+
+    dz?.addEventListener('dragover', () => dz.classList.add('drag'));
+    dz?.addEventListener('dragleave', () => dz.classList.remove('drag'));
+    dz?.addEventListener('drop', (e) => {
+      dz.classList.remove('drag');
+      const files = e.dataTransfer.files;
+      if (files.length) {
+        this.handleFileSelect({ target: { files } });
+      }
+    });
+
+    this.renderStyles();
+  },
+
   renderStyles() {
     const grid = document.getElementById('style-grid');
     if (!grid) return;
     grid.innerHTML = STYLES.map(st => `
-      <label class="sc ${st.cls} ${S.selectedStyle === st.id ? 'sel' : ''}">
-        <input type="radio" name="style" value="${st.id}" ${S.selectedStyle === st.id ? 'checked' : ''} onchange="window.selectStyle('${st.id}')">
+      <div class="sc ${st.cls} ${S.selectedStyle === st.id ? 'sel' : ''}" data-id="${st.id}">
         <span class="sc-ico">${st.icon}</span>
         <span class="sc-info">
           <span class="sc-name">${st.name}</span>
           <span class="sc-desc">${st.desc}</span>
         </span>
-      </label>`).join('');
+      </div>`).join('');
+
+    grid.querySelectorAll('.sc').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = el.dataset.id;
+        S.selectedStyle = id;
+        localStorage.setItem('dv_style', id);
+        this.renderStyles();
+      });
+    });
   },
 
   handleFileSelect(e) {
@@ -24,7 +64,8 @@ export const UploadModal = {
     if (!file) return;
     S.pendingFile = file;
     const info = document.getElementById('sel-f');
-    if (info) info.textContent = file.name;
+    if (info) info.textContent = `📄 ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+    
     const btn = document.getElementById('b-proc');
     if (btn) {
       btn.disabled = false;
@@ -37,5 +78,7 @@ export const UploadModal = {
     S.pendingFile = null;
     const info = document.getElementById('sel-f');
     if (info) info.textContent = '';
+    const btn = document.getElementById('b-proc');
+    if (btn) btn.disabled = true;
   }
 };
