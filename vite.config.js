@@ -22,16 +22,22 @@ export default defineConfig({
             type: 'image/png'
           }
         ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,wasm}']
       }
     })
   ],
   build: {
-    target: 'esnext',
+    target: 'es2020',
     minify: 'esbuild',
     rollupOptions: {
       output: {
         format: 'es'
       }
     }
+  },
+  worker: {
+    format: 'es'
   }
 });
