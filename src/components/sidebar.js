@@ -30,6 +30,7 @@ export const Sidebar = {
           <div class="fi-main">
             <span class="fi-ico">🗒</span>
             <span class="fi-nm">${f.name}</span>
+            <button class="fi-del" title="삭제">✕</button>
           </div>
           ${snippet}
         </div>
@@ -43,7 +44,18 @@ export const Sidebar = {
     // Event Delegation for file list
     const list = document.getElementById('md-l');
     list?.addEventListener('click', (e) => {
+      const delBtn = e.target.closest('.fi-del');
       const item = e.target.closest('.fi');
+      
+      if (delBtn && item) {
+        e.stopPropagation();
+        const id = item.dataset.id;
+        if (confirm('이 문서를 삭제하시겠습니까?')) {
+          this.deleteDoc(id);
+        }
+        return;
+      }
+
       if (item) {
         const id = item.dataset.id;
         this.openDoc(id);
@@ -58,6 +70,16 @@ export const Sidebar = {
     Viewer.render();
     this.render();
     QAPanel.render();
+  },
+
+  async deleteDoc(id) {
+    await IDB.deleteDoc(id);
+    S.md = S.md.filter(d => d.id !== id);
+    if (S.activeDoc?.id === id) {
+      const { Editor } = await import('./editor.js');
+      Editor.close();
+    }
+    this.render();
   },
 
   initResizer() {

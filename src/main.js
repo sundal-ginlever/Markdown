@@ -133,6 +133,21 @@ function bindEvents() {
   document.getElementById('qa-input')?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); QAPanel.ask(); }
   });
+
+  // Additional Document Actions
+  document.getElementById('b-export')?.addEventListener('click', () => Editor.export());
+  document.getElementById('btn-export-all')?.addEventListener('click', () => Editor.exportAll());
+  document.getElementById('btn-clear-all')?.addEventListener('click', () => {
+    if (confirm('모든 문서를 삭제하시겠습니까? (복구 불가)')) {
+      IDB.clear('docs');
+      IDB.clear('raw');
+      IDB.clear('logs');
+      S.md = [];
+      Sidebar.render();
+      Editor.close();
+      UI.toast('전체 데이터가 초기화되었습니다', 'ok');
+    }
+  });
 }
 
 async function processFile() {

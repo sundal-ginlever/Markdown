@@ -210,3 +210,12 @@
   background: var(--bdr);
   border-radius: 2px;
 }
+
+/* DOC TOOLBAR & TABS FIX */
+.doc-tb { display: flex !important; flex-direction: row !important; align-items: center; justify-content: space-between; overflow: visible; gap: 10px; }
+.ta-wrap { display: flex !important; flex-direction: row !important; align-items: center; gap: 6px; flex-shrink: 0; }
+.dp { flex: 1; display: flex; align-items: center; gap: 3px; font-family: var(--mono); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp .c { color: var(--t3); }
+.dp .s { color: var(--bdr); }
+.dp .a { color: var(--t1); font-weight: 600; }
+

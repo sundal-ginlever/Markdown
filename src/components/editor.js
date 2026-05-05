@@ -31,5 +31,36 @@ export const Editor = {
     Viewer.render();
     this.setMode('view');
     UI.toast('저장되었습니다!', 'ok');
+  },
+
+  export() {
+    if (!S.activeDoc) return;
+    const blob = new Blob([S.activeDoc.content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = S.activeDoc.name;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  exportAll() {
+    if (!S.md.length) return;
+    S.md.forEach(doc => {
+      const blob = new Blob([doc.content], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.name;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  },
+
+  close() {
+    S.activeDoc = null;
+    document.getElementById('doc-tb').style.display = 'none';
+    document.getElementById('view-a').innerHTML = '';
+    document.getElementById('edit-a').style.display = 'none';
   }
 };

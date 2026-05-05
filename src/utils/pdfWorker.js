@@ -9,6 +9,9 @@ self.onmessage = async (e) => {
     // Dynamic import inside worker
     const pdfjs = await import('pdfjs-dist');
     
+    // Set worker source for pdfjs-dist (using versioned cdn to match the library)
+    pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+    
     if (workerSrc) pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
     
     const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;

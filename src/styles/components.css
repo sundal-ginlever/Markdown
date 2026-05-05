@@ -392,3 +392,14 @@
 .sc-name { font-family: var(--dsp); font-size: 12px; font-weight: 700; color: var(--t1); display: block; }
 .sc-desc { font-size: 10px; color: var(--t3); line-height: 1.4; display: block; }
 
+
+/* SIDEBAR DELETE BUTTON */
+.fi-del { opacity: 0; background: none; border: none; color: var(--t3); cursor: pointer; padding: 2px 5px; font-size: 10px; transition: var(--ease); }
+.fi:hover .fi-del { opacity: 1; }
+.fi-del:hover { color: #ef4444; }
+
+/* LAYOUT FIXES FOR MODULAR VERSION */
+.doc-tb { padding: 8px 16px; min-height: 44px; }
+.ta-wrap { margin-left: auto; }
+.tb { font-size: 11px; padding: 5px 10px; height: 28px; display: flex; align-items: center; justify-content: center; }
+
