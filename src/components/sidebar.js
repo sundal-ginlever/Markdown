@@ -9,6 +9,11 @@ import { SearchService } from '../services/search.js';
 
 export const Sidebar = {
   render() {
+    this.renderMD();
+    this.renderRaw();
+  },
+
+  renderMD() {
     const el = document.getElementById('md-l');
     if (!el) return;
     
@@ -36,6 +41,32 @@ export const Sidebar = {
         </div>
       `;
     }).join('');
+    
+    const countEl = document.getElementById('md-cnt');
+    if (countEl) countEl.textContent = filtered.length;
+  },
+
+  renderRaw() {
+    const el = document.getElementById('raw-l');
+    if (!el) return;
+
+    if (!S.raw || !S.raw.length) {
+      el.innerHTML = `<div class="emp">📂 No files yet</div>`;
+      document.getElementById('raw-cnt').textContent = '0';
+      return;
+    }
+
+    el.innerHTML = S.raw.map(f => `
+      <div class="fi raw" data-id="${f.id}">
+        <div class="fi-main">
+          <span class="fi-ico">📄</span>
+          <span class="fi-nm">${f.name}</span>
+        </div>
+      </div>
+    `).join('');
+
+    const countEl = document.getElementById('raw-cnt');
+    if (countEl) countEl.textContent = S.raw.length;
   },
 
   init() {

@@ -57,9 +57,9 @@ export const IDB = {
   async del(store, id) { return this.op(store, 'readwrite', s => s.delete(id)); },
   async clear(store) { return this.op(store, 'readwrite', s => s.clear()); },
 
-  async saveDoc(doc, rawData, logs) {
+  async saveDoc(doc, rawData, logs, fileName, fileType) {
     await this.put('docs', doc);
-    if (rawData) await this.put('raw', { id: doc.id, data: rawData });
+    if (rawData) await this.put('raw', { id: doc.id, data: rawData, name: fileName, type: fileType });
     if (logs && logs.length) {
       for (const l of logs) {
         await this.put('logs', { ...l, docId: doc.id });

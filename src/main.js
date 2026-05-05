@@ -66,7 +66,9 @@ async function init() {
 
   // Initial Data Fetch
   const docs = await IDB.loadDocs();
+  const rawFiles = await IDB.getAll('raw');
   S.md = docs.sort((a, b) => b.createdAt - a.createdAt);
+  S.raw = rawFiles.map(r => ({ id: r.id, name: r.name || 'Original File', type: r.type }));
   Sidebar.render();
 
   // Watch Realtime Status
@@ -188,9 +190,18 @@ async function processFile() {
       version: 1
     };
 
-    await IDB.saveDoc(doc, fd.text);
+    await IDB.saveDoc(doc, fd.text, null, file.name, fd.type);
     await SB.saveDoc(doc, { name: file.name, ext, content: fd.text });
+    
+    // Update local state
+    const rawFile = { id: doc.id, name: file.name, type: fd.type };
+    if (!S.raw) S.raw = [];
+    S.raw.unshift(rawFile);
     S.md.unshift(doc);
+    
+    // Clear file input to allow re-uploading same file
+    document.getElementById('fi').value = '';
+
     Sidebar.render();
     UI.toast('변환 완료!', 'ok');
     UI.hidePb();
