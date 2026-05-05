@@ -1,6 +1,7 @@
 {
   "name": "docvault",
   "version": "2.0.0",
+  "type": "module",
   "description": "DocVault v2.0 - AI-powered Document Vault",
   "main": "index.html",
   "scripts": {
