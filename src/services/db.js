@@ -4,7 +4,7 @@
 import { S } from '../state/store.js';
 
 const DB_NAME = 'DocVaultDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export const IDB = {
   db: null,

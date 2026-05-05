@@ -58,12 +58,17 @@ export const SettingsModal = {
     } else if (p === 'gemini') {
       html = `
         <div class="fr"><label class="fl-lbl">GOOGLE AI API KEY (GEMINI)</label><input type="password" class="fi-inp" id="k-gemini" value="${S.ai.keys.gemini || ''}"></div>
-        <div class="fr"><label class="fl-lbl">MODEL</label><select class="fi-inp" id="m-gemini">
-          <option value="gemini-1.5-pro" ${S.ai.models.gemini === 'gemini-1.5-pro' ? 'selected' : ''}>Gemini 1.5 Pro (Stable)</option>
-          <option value="gemini-1.5-pro-latest" ${S.ai.models.gemini === 'gemini-1.5-pro-latest' ? 'selected' : ''}>Gemini 1.5 Pro (Latest)</option>
-          <option value="gemini-1.5-flash" ${S.ai.models.gemini === 'gemini-1.5-flash' ? 'selected' : ''}>Gemini 1.5 Flash</option>
-          <option value="gemini-pro" ${S.ai.models.gemini === 'gemini-pro' ? 'selected' : ''}>Gemini 1.0 Pro</option>
-        </select></div>
+        <div class="fr"><label class="fl-lbl">MODEL (SELECT OR TYPE)</label>
+          <input type="text" class="fi-inp" id="m-gemini" list="gemini-models" value="${S.ai.models.gemini || 'gemini-1.5-pro'}" placeholder="e.g. gemini-1.5-pro">
+          <datalist id="gemini-models">
+            <option value="gemini-1.5-pro">Gemini 1.5 Pro (Stable)</option>
+            <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro (Latest)</option>
+            <option value="gemini-1.5-pro-002">Gemini 1.5 Pro 002 (Newest)</option>
+            <option value="gemini-1.5-flash">Gemini 1.5 Flash (Fast)</option>
+            <option value="gemini-1.5-flash-002">Gemini 1.5 Flash 002</option>
+            <option value="gemini-pro">Gemini 1.0 Pro</option>
+          </datalist>
+        </div>
       `;
     } else if (p === 'local') {
       html = `
