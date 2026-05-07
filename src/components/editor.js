@@ -26,7 +26,8 @@ export const Editor = {
     if (!S.activeDoc) return;
     const content = document.getElementById('mdt').value;
     S.activeDoc.content = content;
-    await IDB.saveDoc(S.activeDoc);
+    // Only update the doc record — don't touch raw data
+    await IDB.put('docs', S.activeDoc);
     await SB.saveDoc(S.activeDoc);
     Viewer.render();
     this.setMode('view');

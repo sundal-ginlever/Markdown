@@ -145,6 +145,7 @@ function bindEvents() {
       IDB.clear('raw');
       IDB.clear('logs');
       S.md = [];
+      S.raw = [];
       Sidebar.render();
       Editor.close();
       UI.toast('전체 데이터가 초기화되었습니다', 'ok');
@@ -212,8 +213,5 @@ async function processFile() {
     UI.hidePb();
   }
 }
-
-// Global hook for dynamic radio buttons in modal
-window.selectStyle = (id) => { S.selectedStyle = id; UploadModal.renderStyles(); };
 
 document.addEventListener('DOMContentLoaded', init);

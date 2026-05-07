@@ -3,6 +3,7 @@
  */
 import { S, SEARCH } from '../state/store.js';
 import { t } from '../utils/i18n.js';
+import { IDB } from '../services/db.js';
 import { Viewer } from './viewer.js';
 import { QAPanel } from './qaPanel.js';
 import { SearchService } from '../services/search.js';
@@ -52,7 +53,8 @@ export const Sidebar = {
 
     if (!S.raw || !S.raw.length) {
       el.innerHTML = `<div class="emp">📂 No files yet</div>`;
-      document.getElementById('raw-cnt').textContent = '0';
+      const cnt = document.getElementById('raw-cnt');
+      if (cnt) cnt.textContent = '0';
       return;
     }
 
@@ -65,8 +67,8 @@ export const Sidebar = {
       </div>
     `).join('');
 
-    const countEl = document.getElementById('raw-cnt');
-    if (countEl) countEl.textContent = S.raw.length;
+    const rawCntEl = document.getElementById('raw-cnt');
+    if (rawCntEl) rawCntEl.textContent = S.raw.length;
   },
 
   init() {

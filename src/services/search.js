@@ -56,14 +56,30 @@ export const SearchService = {
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
     
+    const escaped = this.escapeRegExp(query);
     nodes.forEach(node => {
       const txt = node.nodeValue;
-      const regex = new RegExp(`(${this.escapeRegExp(query)})`, 'gi');
-      if (regex.test(txt)) {
-        const span = document.createElement('span');
-        span.innerHTML = txt.replace(regex, '<mark class="hl">$1</mark>');
-        node.parentNode.replaceChild(span, node);
+      const regex = new RegExp(escaped, 'gi');
+      if (!regex.test(txt)) return;
+      
+      // Safe DOM-based replacement (no innerHTML)
+      const frag = document.createDocumentFragment();
+      let lastIdx = 0;
+      txt.replace(new RegExp(`(${escaped})`, 'gi'), (match, p1, offset) => {
+        if (offset > lastIdx) {
+          frag.appendChild(document.createTextNode(txt.slice(lastIdx, offset)));
+        }
+        const mark = document.createElement('mark');
+        mark.className = 'hl';
+        mark.textContent = match;
+        frag.appendChild(mark);
+        lastIdx = offset + match.length;
+        return match;
+      });
+      if (lastIdx < txt.length) {
+        frag.appendChild(document.createTextNode(txt.slice(lastIdx)));
       }
+      node.parentNode.replaceChild(frag, node);
     });
   }
 };

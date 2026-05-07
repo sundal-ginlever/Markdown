@@ -47,13 +47,13 @@ export async function aiConvert(fname, fd, textOverride, styleDef) {
   }
 
   if (p === 'gemini') {
-    const url = `/api/gemini${S.ai.keys.gemini ? '?key=' + S.ai.keys.gemini : ''}`;
-    const r = await fetch(url, {
+    const r = await fetch('/api/gemini', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: S.ai.models.gemini,
-        contents: [{ parts: [{ text: prompt }] }]
+        contents: [{ parts: [{ text: prompt }] }],
+        apiKey: S.ai.keys.gemini || ''
       })
     });
     if (!r.ok) {
@@ -191,11 +191,11 @@ Instructions:
         parts: [{ text: m.content }]
       }))
     ];
-    const url = `/api/gemini${S.ai.keys.gemini ? '?key=' + S.ai.keys.gemini : ''}`;
+    const url = '/api/gemini';
     const r = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: S.ai.models.gemini, contents: geminiMsgs })
+      body: JSON.stringify({ model: S.ai.models.gemini, contents: geminiMsgs, apiKey: S.ai.keys.gemini || '' })
     });
     if (!r.ok) {
       const errJson = await r.json().catch(() => ({}));

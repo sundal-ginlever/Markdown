@@ -3,8 +3,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { model, contents } = req.body;
-  const clientKey = req.query.key; // Often passed in URL for Gemini
+  const { model, contents, apiKey: bodyKey } = req.body;
+  const clientKey = bodyKey || req.query.key;
   const serverKey = process.env.GOOGLE_API_KEY;
   const apiKey = serverKey || clientKey;
 
