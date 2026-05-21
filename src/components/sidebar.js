@@ -20,11 +20,22 @@ export const Sidebar = {
     
     let filtered = S.md;
     if (SEARCH.filter !== 'all') {
-      filtered = filtered.filter(d => d.styleId === SEARCH.filter);
+      if (SEARCH.filter === 'fav') {
+        filtered = filtered.filter(d => S.favorites.includes(d.id));
+      } else {
+        filtered = filtered.filter(d => d.styleId === SEARCH.filter);
+      }
     }
     
     // Apply sorting
-    if (S.sort === 'old') {
+    if (S.sort === 'fav') {
+      filtered.sort((a, b) => {
+        const aFav = S.favorites.includes(a.id) ? 1 : 0;
+        const bFav = S.favorites.includes(b.id) ? 1 : 0;
+        if (aFav !== bFav) return bFav - aFav;
+        return b.createdAt - a.createdAt;
+      });
+    } else if (S.sort === 'old') {
       filtered.sort((a, b) => a.createdAt - b.createdAt);
     } else if (S.sort === 'new') {
       filtered.sort((a, b) => b.createdAt - a.createdAt);
@@ -43,11 +54,12 @@ export const Sidebar = {
 
     el.innerHTML = filtered.map(f => {
       const isAct = S.activeDoc?.id === f.id;
+      const isFav = S.favorites.includes(f.id);
       const snippet = SEARCH.query ? `<div class="fi-snip">${SearchService.buildSnippet(f.content, SEARCH.query)}</div>` : '';
       return `
         <div class="fi ${isAct ? 'act' : ''}" data-id="${f.id}">
           <div class="fi-main">
-            <span class="fi-ico">🗒</span>
+            <span class="fi-ico" style="${isFav ? 'color:gold;font-size:12px' : ''}">${isFav ? '★' : '🗒'}</span>
             <span class="fi-nm">${f.name}</span>
             <button class="fi-del" title="삭제">✕</button>
           </div>

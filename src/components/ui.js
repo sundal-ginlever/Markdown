@@ -7,6 +7,12 @@ export const UI = {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         document.querySelectorAll('.ov.show').forEach(el => el.classList.remove('show'));
+        const lgb = document.getElementById('lgb');
+        if (lgb && lgb.classList.contains('show')) {
+          import('../state/store.js').then(({ S }) => {
+            if (S.logOpen) import('./logPanel.js').then(({ LogPanel }) => LogPanel.toggle());
+          });
+        }
       }
     });
   },

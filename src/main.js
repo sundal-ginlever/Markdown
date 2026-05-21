@@ -128,12 +128,127 @@ function bindEvents() {
     SEARCH.query = '';
     Sidebar.render();
   });
+  document.getElementById('btn-clear-hl')?.addEventListener('click', () => {
+    document.getElementById('search-input').value = '';
+    SEARCH.query = '';
+    document.getElementById('hl-nav').style.display = 'none';
+    Sidebar.render();
+    import('./components/viewer.js').then(({ Viewer }) => Viewer.render());
+  });
+  document.getElementById('btn-prev-hl')?.addEventListener('click', () => {
+    import('./services/search.js').then(({ SearchService }) => SearchService.prevHighlight());
+  });
+  document.getElementById('btn-next-hl')?.addEventListener('click', () => {
+    import('./services/search.js').then(({ SearchService }) => SearchService.nextHighlight());
+  });
+
+  // Mobile Sidebar Toggle
+  document.getElementById('mob-sb-btn')?.addEventListener('click', () => {
+    document.getElementById('sb')?.classList.toggle('show');
+  });
+  document.addEventListener('click', (e) => {
+    const sb = document.getElementById('sb');
+    if (sb && sb.classList.contains('show') && !e.target.closest('.sb') && !e.target.closest('#mob-sb-btn')) {
+      sb.classList.remove('show');
+    }
+  });
 
   // Editor/Viewer Tabs
   document.getElementById('b-view')?.addEventListener('click', () => Editor.setMode('view'));
   document.getElementById('b-edit')?.addEventListener('click', () => Editor.setMode('edit'));
   document.getElementById('b-save')?.addEventListener('click', () => Editor.save());
   document.getElementById('b-log')?.addEventListener('click', () => LogPanel.toggle());
+  document.getElementById('b-log-close')?.addEventListener('click', () => LogPanel.toggle());
+
+  // Favorites Toggle
+  const toggleFav = () => {
+    if (!S.activeDoc) return;
+    const id = S.activeDoc.id;
+    if (S.favorites.includes(id)) S.favorites = S.favorites.filter(x => x !== id);
+    else S.favorites.push(id);
+    localStorage.setItem('dv_favs', JSON.stringify(S.favorites));
+    Sidebar.render();
+    import('./components/viewer.js').then(({ Viewer }) => Viewer.renderFavBtn());
+  };
+  document.getElementById('btn-fav-doc')?.addEventListener('click', toggleFav);
+
+  // Command Palette
+  const toggleCmdPal = (show) => {
+    const pal = document.getElementById('cmd-pal');
+    if (!pal) return;
+    const isShowing = show ?? !pal.classList.contains('show');
+    pal.classList.toggle('show', isShowing);
+    if (isShowing) {
+      const inp = document.getElementById('cmd-input');
+      inp.value = '';
+      setTimeout(() => inp.focus(), 50);
+      renderCmdList();
+    }
+  };
+
+  const renderCmdList = (q = '') => {
+    const list = document.getElementById('cmd-list');
+    const cmds = [
+      { t: '새로운 문서 변환 시작', icon: '⚡', action: () => UI.toggleModal('up-mo', true) },
+      { t: 'AI 프로바이더 설정', icon: '🔑', action: () => UI.toggleModal('key-mo', true) },
+      { t: '클라우드 설정', icon: '☁️', action: () => UI.toggleModal('cloud-mo', true) },
+      ...S.md.map(d => ({ t: `문서 열기: ${d.name}`, icon: '🗒', action: () => Sidebar.openDoc(d.id) }))
+    ];
+    
+    const filtered = cmds.filter(c => c.t.toLowerCase().includes(q.toLowerCase()));
+    list.innerHTML = filtered.map((c, i) => `
+      <div class="cmd-item" style="padding:12px 16px;cursor:pointer;color:var(--t1);border-radius:6px;display:flex;align-items:center;gap:12px;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" data-idx="${i}">
+        <span>${c.icon}</span> <span>${c.t}</span>
+      </div>
+    `).join('');
+    
+    list.querySelectorAll('.cmd-item').forEach(el => {
+      el.onclick = () => { toggleCmdPal(false); filtered[el.dataset.idx].action(); };
+    });
+  };
+
+  document.getElementById('cmd-input')?.addEventListener('input', (e) => renderCmdList(e.target.value));
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      toggleCmdPal();
+    }
+  });
+
+  // Document Rename
+  const triggerRename = () => {
+    if (!S.activeDoc) return;
+    const nameEl = document.getElementById('dp-name');
+    if (nameEl.querySelector('input')) return;
+    
+    const curName = S.activeDoc.name;
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.value = curName;
+    inp.style.cssText = 'background:transparent;border:1px solid var(--acc);color:var(--t1);font:inherit;padding:0 4px;border-radius:3px;outline:none;';
+    inp.style.width = Math.max(80, curName.length * 8) + 'px';
+    
+    const saveName = async () => {
+      const nw = inp.value.trim();
+      if (nw && nw !== curName) {
+        S.activeDoc.name = nw;
+        S.activeDoc.updatedAt = new Date();
+        await IDB.put('docs', S.activeDoc);
+        await IDB.put('logs', { docId: S.activeDoc.id, ts: Date.now(), msg: `문서 이름 변경: ${nw}` });
+        Sidebar.render();
+      }
+      nameEl.textContent = S.activeDoc.name;
+    };
+    
+    inp.onblur = saveName;
+    inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') nameEl.textContent = curName; };
+    
+    nameEl.innerHTML = '';
+    nameEl.appendChild(inp);
+    inp.focus();
+  };
+  document.getElementById('dp-rename-btn')?.addEventListener('click', triggerRename);
+  document.getElementById('dp-name')?.addEventListener('dblclick', triggerRename);
 
   // Q&A Panel
   document.getElementById('b-qa')?.addEventListener('click', () => QAPanel.toggle());

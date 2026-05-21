@@ -25,11 +25,18 @@ export const Editor = {
   async save() {
     if (!S.activeDoc) return;
     const content = document.getElementById('mdt').value;
+    const delta = content.length - (S.activeDoc.content?.length || 0);
     S.activeDoc.content = content;
-    // Only update the doc record — don't touch raw data
+    
     await IDB.put('docs', S.activeDoc);
+    await IDB.put('logs', { docId: S.activeDoc.id, ts: Date.now(), msg: '문서 내용 직접 편집', delta });
     await SB.saveDoc(S.activeDoc);
+    
     Viewer.render();
+    if (S.logOpen) {
+      import('./logPanel.js').then(({ LogPanel }) => LogPanel.render());
+    }
+    
     this.setMode('view');
     UI.toast('저장되었습니다!', 'ok');
   },

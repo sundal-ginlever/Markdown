@@ -244,25 +244,30 @@
   width: 100%;
 }
 
-.mdv h1 {
-  font-family: var(--dsp);
-  font-size: clamp(20px, 3vw, 28px);
-  font-weight: 800;
+.mdv h1, .mdv h2, .mdv h3, .mdv h4, .mdv h5, .mdv h6 {
   color: var(--t1);
-  margin-bottom: 10px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid var(--bdr);
-  letter-spacing: -.02em;
+  margin-top: 24px;
+  margin-bottom: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.mdv h1 {
+  font-size: 2em;
+  border-bottom: 1px solid var(--bdr);
+  padding-bottom: 0.3em;
+  background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  width: 100%;
 }
 
 .mdv h2 {
-  font-family: var(--dsp);
-  font-size: clamp(15px, 2vw, 20px);
-  font-weight: 700;
-  color: var(--t1);
-  margin: 28px 0 10px;
-  padding-bottom: 4px;
+  font-size: 1.5em;
   border-bottom: 1px solid var(--bdr);
+  padding-bottom: 0.3em;
 }
 
 .mdv p {
@@ -280,6 +285,21 @@
   border-radius: 4px;
   padding: 2px 6px;
   color: var(--acc);
+}
+
+.mdv mark.hl {
+  background: rgba(250, 204, 21, 0.3);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+.mdv mark.hl-active {
+  background: rgba(234, 88, 12, 0.2);
+  border: 1px solid rgba(234, 88, 12, 0.8);
+  box-shadow: 0 0 8px rgba(234, 88, 12, 0.4);
+  color: var(--t1);
+  font-weight: 500;
+  border-radius: 4px;
 }
 
 .mdv pre {
