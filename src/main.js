@@ -23,6 +23,8 @@ import { Editor } from './components/editor.js';
 import { QAPanel } from './components/qaPanel.js';
 import { UploadModal } from './components/modals/uploadModal.js';
 import { SettingsModal } from './components/modals/settingsModal.js';
+import { CloudModal } from './components/modals/cloudModal.js';
+import { LogPanel } from './components/logPanel.js';
 
 // --- Initialization ---
 async function init() {
@@ -50,19 +52,21 @@ async function init() {
 
   // Initialize Services
   await IDB.init();
+  await IDB.migrateFromLocalStorage('docvault_data', t, UI.showPb, UI.hidePb, UI.toast);
   const sbClient = await SB.init();
   if (sbClient) {
     RealtimeService.subscribe();
   }
   
   // Component Initializations
+  UI.initGlobal();
   Sidebar.init();
   UploadModal.init();
   SettingsModal.init();
+  CloudModal.init();
   renderI18N();
   
   bindEvents();
-  Router.init();
 
   // Initial Data Fetch
   const docs = await IDB.loadDocs();
@@ -70,6 +74,8 @@ async function init() {
   S.md = docs.sort((a, b) => b.createdAt - a.createdAt);
   S.raw = rawFiles.map(r => ({ id: r.id, name: r.name || 'Original File', type: r.type }));
   Sidebar.render();
+  
+  Router.init();
 
   // Watch Realtime Status
   subscribe((state) => updateRTUI(state.rtStatus));
@@ -127,6 +133,7 @@ function bindEvents() {
   document.getElementById('b-view')?.addEventListener('click', () => Editor.setMode('view'));
   document.getElementById('b-edit')?.addEventListener('click', () => Editor.setMode('edit'));
   document.getElementById('b-save')?.addEventListener('click', () => Editor.save());
+  document.getElementById('b-log')?.addEventListener('click', () => LogPanel.toggle());
 
   // Q&A Panel
   document.getElementById('b-qa')?.addEventListener('click', () => QAPanel.toggle());
@@ -181,10 +188,11 @@ async function processFile() {
     const mdc = await aiConvert(file.name, fd, null, styleDef);
     
     const id = Date.now().toString();
+    const docId = 'md_' + id;
     const doc = {
-      id: 'md_' + id,
+      id: docId,
       name: file.name.replace(/\.[^.]+$/, '') + '.md',
-      rawId: id,
+      rawId: docId,
       content: mdc,
       styleId: S.selectedStyle,
       createdAt: new Date(),

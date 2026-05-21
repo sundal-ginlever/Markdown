@@ -41,7 +41,7 @@ export const S = new Proxy({
 });
 
 export const QA = new Proxy({
-  history: {},
+  history: JSON.parse(localStorage.getItem('dv_qa_hist') || '{}'),
   activeDocId: null,
   loading: false,
   expanded: false,

@@ -3,6 +3,14 @@
  */
 
 export const UI = {
+  initGlobal() {
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.ov.show').forEach(el => el.classList.remove('show'));
+      }
+    });
+  },
+
   toast(m, t = '') {
     const c = document.getElementById('toasts');
     if (!c) return;

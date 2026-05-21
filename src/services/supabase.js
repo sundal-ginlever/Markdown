@@ -59,6 +59,7 @@ export const SB = {
   },
 
   async saveDoc(mf, rawDoc) {
+    if (!this.config?.url || !this.config?.key) return;
     const payload = {
       action: 'saveDoc',
       data: { mf, rawDoc },
@@ -152,6 +153,7 @@ export const SB = {
   },
 
   async deleteDoc(docId) {
+    if (!this.config?.url || !this.config?.key) return;
     const payload = { action: 'deleteDoc', data: { docId }, ts: Date.now() };
     await IDB.put('sync_queue', payload);
     this.processQueue();
@@ -162,6 +164,7 @@ export const SB = {
   },
 
   async saveLog(docId, logEntry) {
+    if (!this.config?.url || !this.config?.key) return;
     const payload = { action: 'saveLog', data: { docId, logEntry }, ts: Date.now() };
     await IDB.put('sync_queue', payload);
     this.processQueue();

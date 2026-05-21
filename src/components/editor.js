@@ -47,21 +47,26 @@ export const Editor = {
 
   exportAll() {
     if (!S.md.length) return;
-    S.md.forEach(doc => {
-      const blob = new Blob([doc.content], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = doc.name;
-      a.click();
-      URL.revokeObjectURL(url);
+    S.md.forEach((doc, idx) => {
+      setTimeout(() => {
+        const blob = new Blob([doc.content], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = doc.name;
+        a.click();
+        URL.revokeObjectURL(url);
+      }, idx * 300); // Prevent browser from blocking multiple sync downloads
     });
   },
 
   close() {
     S.activeDoc = null;
     document.getElementById('doc-tb').style.display = 'none';
-    document.getElementById('view-a').innerHTML = '';
+    const mdv = document.getElementById('mdv');
+    if (mdv) mdv.innerHTML = '';
+    const wlc = document.getElementById('wlc-a');
+    if (wlc) wlc.style.display = 'flex';
     document.getElementById('edit-a').style.display = 'none';
   }
 };

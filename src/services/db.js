@@ -79,8 +79,18 @@ export const IDB = {
       const tx = db.transaction('logs', 'readwrite');
       const store = tx.objectStore('logs');
       const idx = store.index('docId');
-      const req = idx.openCursor(IDBKeyRange.only(id));
-      req.onsuccess = e => { const c = e.target.result; if (c) { c.delete(); c.continue(); } };
+      await new Promise((resolve, reject) => {
+        const req = idx.openCursor(IDBKeyRange.only(id));
+        req.onsuccess = e => { 
+          const c = e.target.result; 
+          if (c) { 
+            c.delete(); 
+            c.continue(); 
+          } 
+        };
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
     } catch (e) { console.warn('IDB log cleanup:', e); }
   },
 

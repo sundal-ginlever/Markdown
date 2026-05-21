@@ -28,8 +28,8 @@ export const QAPanel = {
 
     try {
       const docId = S.activeDoc.id;
-      if (!QA.history[docId]) QA.history[docId] = [];
-      const ans = await callQAApi(q, S.activeDoc, QA.history[docId]);
+      const historyArr = QA.history[docId] || [];
+      const ans = await callQAApi(q, S.activeDoc, historyArr);
       this.addMessage('ai', ans);
     } catch (e) {
       UI.toast('QA Error: ' + e.message, 'err');
@@ -42,8 +42,9 @@ export const QAPanel = {
   addMessage(role, content) {
     const docId = S.activeDoc?.id;
     if (!docId) return;
-    if (!QA.history[docId]) QA.history[docId] = [];
-    QA.history[docId].push({ role, content, ts: Date.now() });
+    const currentHist = QA.history[docId] || [];
+    QA.history = { ...QA.history, [docId]: [...currentHist, { role, content, ts: Date.now() }] };
+    localStorage.setItem('dv_qa_hist', JSON.stringify(QA.history));
     this.render();
   },
 

@@ -223,7 +223,19 @@ export function setLang(lang) {
 
 export function renderI18N() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
-    el.textContent = t(el.dataset.i18n);
+    const translation = t(el.dataset.i18n);
+    // Find the first text node child to replace, or set textContent if none
+    const textNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0);
+    if (textNode) {
+      textNode.textContent = translation;
+    } else {
+      // If there are child elements (like icons) but no text node, append a text node
+      if (el.children.length > 0) {
+        el.appendChild(document.createTextNode(translation));
+      } else {
+        el.textContent = translation;
+      }
+    }
   });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => {
     el.placeholder = t(el.dataset.i18nPh);

@@ -14,13 +14,32 @@ export const UploadModal = {
 
     // Drag and Drop
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
-      dz?.addEventListener(evt, (e) => {
+      const handler = (e) => {
         e.preventDefault();
         e.stopPropagation();
-      });
+      };
+      dz?.addEventListener(evt, handler);
+      
       document.body.addEventListener(evt, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+        if (evt === 'drop') {
+          // If dropped on the main drag zone, trigger upload modal
+          const isMainDz = e.target.closest('#main-dz');
+          if (isMainDz) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.dataTransfer?.files?.length) {
+              this.handleFileSelect({ target: { files: e.dataTransfer.files } });
+              UI.toggleModal('up-mo', true);
+            }
+            return;
+          }
+        }
+        
+        // Block global drag-drop only when modal is open
+        if (document.getElementById('up-mo')?.classList.contains('show')) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
       });
     });
 

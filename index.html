@@ -232,6 +232,24 @@
   </div>
 </div>
 
+<div class="ov" id="cloud-mo">
+  <div class="mo wide">
+    <div class="mo-ttl">
+      <span data-i18n="mo_cloud_ttl">Supabase 클라우드 동기화</span>
+      <span class="secure-badge" title="AES-GCM 256-bit Encryption">🔒 Secured</span>
+    </div>
+    <div class="mo-sub" data-i18n="mo_cloud_sub">설정 정보는 암호화되어 안전하게 보관됩니다.</div>
+    <div class="kf-wrap">
+      <div class="fr"><label class="fl-lbl">SUPABASE PROJECT URL</label><input type="url" class="fi-inp" id="cloud-url" placeholder="https://xxxx.supabase.co"></div>
+      <div class="fr"><label class="fl-lbl">ANON PUBLIC KEY</label><input type="password" class="fi-inp" id="cloud-key" placeholder="eyJhbGciOiJIUzI1NiIsInR..."></div>
+    </div>
+    <div class="mo-ft">
+      <button class="bg" id="btn-cloud-cancel">Cancel</button>
+      <button class="bp" id="btn-cloud-save">💾 Save</button>
+    </div>
+  </div>
+</div>
+
 <div id="toasts"></div>
 <input type="file" id="fi" style="display:none" accept=".txt,.md,.pdf,.docx,.csv,.json,.xlsx,.xls,.ods">
 </body>

@@ -19,8 +19,21 @@ export const Sidebar = {
     if (!el) return;
     
     let filtered = S.md;
+    if (SEARCH.filter !== 'all') {
+      filtered = filtered.filter(d => d.styleId === SEARCH.filter);
+    }
+    
+    // Apply sorting
+    if (S.sort === 'old') {
+      filtered.sort((a, b) => a.createdAt - b.createdAt);
+    } else if (S.sort === 'new') {
+      filtered.sort((a, b) => b.createdAt - a.createdAt);
+    } else if (S.sort === 'az') {
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
     if (SEARCH.query) {
-      filtered = SearchService.search(SEARCH.query, S.md);
+      filtered = SearchService.search(SEARCH.query, filtered);
     }
 
     if (!filtered.length) {
@@ -93,6 +106,31 @@ export const Sidebar = {
         const id = item.dataset.id;
         this.openDoc(id);
       }
+    });
+
+    // Section Toggle
+    ['h-raw', 'h-md'].forEach(id => {
+      const h = document.getElementById(id);
+      h?.addEventListener('click', () => {
+        const sec = h.closest('.sb-sec');
+        sec?.classList.toggle('collapsed');
+      });
+    });
+
+    // Search Filters
+    document.querySelectorAll('.sf').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.sf').forEach(b => b.classList.remove('act'));
+        btn.classList.add('act');
+        SEARCH.filter = btn.dataset.f;
+        this.render();
+      });
+    });
+
+    // Search Sort
+    document.getElementById('search-sort')?.addEventListener('change', (e) => {
+      S.sort = e.target.value;
+      this.render();
     });
   },
 

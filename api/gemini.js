@@ -25,7 +25,12 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const errorData = await response.text();
-      return res.status(response.status).send(errorData);
+      try {
+        const jsonError = JSON.parse(errorData);
+        return res.status(response.status).json(jsonError);
+      } catch (e) {
+        return res.status(response.status).json({ error: errorData });
+      }
     }
 
     const data = await response.json();

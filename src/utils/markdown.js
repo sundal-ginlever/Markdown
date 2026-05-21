@@ -15,8 +15,10 @@ marked.setOptions({
 
 // Custom Renderer for Admonitions (Github style)
 const renderer = {
-  blockquote(quote) {
-    const admonitionMatch = quote.match(/^<p>\[!(NOTE|TIP|WARNING|IMPORTANT|INFO)\](.*?)\n?([\s\S]*?)<\/p>$/i);
+  blockquote({ text }) {
+    // In marked v11+, the argument is a token object
+    const admonitionMatch = text.match(/^<p>\[!(NOTE|TIP|WARNING|IMPORTANT|INFO)\](.*?)\n?([\s\S]*?)<\/p>$/i) || 
+                            text.match(/^\[!(NOTE|TIP|WARNING|IMPORTANT|INFO)\](.*?)\n?([\s\S]*)$/i);
     if (admonitionMatch) {
       const type = admonitionMatch[1].toUpperCase();
       const title = admonitionMatch[2].trim();
@@ -28,7 +30,7 @@ const renderer = {
         <p>${body}</p>
       </blockquote>`;
     }
-    return `<blockquote>${quote}</blockquote>`;
+    return `<blockquote>${text}</blockquote>`;
   }
 };
 
