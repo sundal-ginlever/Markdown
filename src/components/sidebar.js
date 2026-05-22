@@ -9,6 +9,7 @@ import { QAPanel } from './qaPanel.js';
 import { SearchService } from '../services/search.js';
 import { SB } from '../services/supabase.js';
 import { Router } from '../utils/router.js';
+import { UI } from './ui.js';
 
 export const Sidebar = {
   render() {
@@ -45,16 +46,33 @@ export const Sidebar = {
       filtered.sort((a, b) => a.name.localeCompare(b.name));
     }
 
+    const statsEl = document.getElementById('search-stats');
     if (SEARCH.query) {
       filtered = SearchService.search(SEARCH.query, filtered);
+      if (statsEl) {
+        const isKo = S.lang === 'ko';
+        statsEl.textContent = isKo ? `${filtered.length}개의 문서가 검색되었습니다` : `${filtered.length} documents found`;
+        statsEl.style.display = 'block';
+      }
+    } else {
+      if (statsEl) {
+        statsEl.textContent = '';
+        statsEl.style.display = 'none';
+      }
     }
 
     if (!filtered.length) {
       el.innerHTML = `<div class="emp">${t('empty_md')}</div>`;
+      const countEl = document.getElementById('md-cnt');
+      if (countEl) countEl.textContent = '0';
       return;
     }
 
-    el.innerHTML = filtered.map(f => {
+    const countEl = document.getElementById('md-cnt');
+    if (countEl) countEl.textContent = filtered.length;
+
+    // Helper to render individual file item HTML
+    const renderFileItem = (f) => {
       const isAct = S.activeDoc?.id === f.id;
       const isFav = S.favorites.includes(f.id);
       const snippet = SEARCH.query ? `<div class="fi-snip">${SearchService.buildSnippet(f.content, SEARCH.query)}</div>` : '';
@@ -62,16 +80,65 @@ export const Sidebar = {
         <div class="fi ${isAct ? 'act' : ''}" data-id="${f.id}">
           <div class="fi-main">
             <span class="fi-ico" style="${isFav ? 'color:gold;font-size:12px' : ''}">${isFav ? '★' : '🗒'}</span>
-            <span class="fi-nm">${f.name}</span>
+            <span class="fi-nm" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${f.name}</span>
+            <button class="fi-fld" title="${t('move_to_folder') || '폴더로 이동'}" style="background:none;border:none;cursor:pointer;opacity:0.6;font-size:11px;margin-right:4px;padding:2px;">📁</button>
             <button class="fi-del" title="삭제">✕</button>
           </div>
           ${snippet}
         </div>
       `;
-    }).join('');
-    
-    const countEl = document.getElementById('md-cnt');
-    if (countEl) countEl.textContent = filtered.length;
+    };
+
+    // If there are folders defined in S.folders, group them
+    if (S.folders && S.folders.length > 0) {
+      let foldersHtml = '';
+      
+      // Render each folder
+      S.folders.forEach(folder => {
+        const folderDocs = filtered.filter(d => d.folderId === folder.id);
+        const isCollapsed = S.secOpen[folder.id] === false;
+        
+        foldersHtml += `
+          <div class="fld-sec ${isCollapsed ? 'collapsed' : ''}" data-folder-id="${folder.id}">
+            <div class="fld-h" style="display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:11px;font-weight:600;color:var(--t2);cursor:pointer;background:var(--bg-hov);border-radius:4px;margin-bottom:2px;user-select:none;">
+              <span class="fld-chv" style="font-size:8px;transition:transform 0.2s;display:inline-block;${isCollapsed ? 'transform:rotate(-90deg);' : ''}">▼</span>
+              <span>📁</span>
+              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${folder.name}</span>
+              <span class="badge" style="background:rgba(0,0,0,0.05);color:var(--t3);padding:1px 5px;border-radius:8px;font-size:9px;font-weight:normal;">${folderDocs.length}</span>
+              <button class="fld-del" style="background:none;border:none;color:var(--red);opacity:0.6;cursor:pointer;font-size:10px;padding:2px 4px;margin-left:4px;" title="폴더 삭제">✕</button>
+            </div>
+            <div class="fld-list" style="margin-left:8px;border-left:1px dashed var(--bdr);padding-left:4px;${isCollapsed ? 'display:none;' : ''}">
+              ${folderDocs.map(f => renderFileItem(f)).join('')}
+              ${folderDocs.length === 0 ? `<div class="emp" style="padding:8px;color:var(--t3);font-size:10px;">${S.lang === 'ko' ? '비어 있는 폴더' : 'Empty folder'}</div>` : ''}
+            </div>
+          </div>
+        `;
+      });
+      
+      // Render Uncategorized docs
+      const uncategorizedDocs = filtered.filter(d => !d.folderId || !S.folders.some(f => f.id === d.folderId));
+      const isUncatCollapsed = S.secOpen['uncategorized'] === false;
+      
+      foldersHtml += `
+        <div class="fld-sec ${isUncatCollapsed ? 'collapsed' : ''}" data-folder-id="uncategorized">
+          <div class="fld-h" style="display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:11px;font-weight:600;color:var(--t3);cursor:pointer;user-select:none;margin-bottom:2px;">
+            <span class="fld-chv" style="font-size:8px;transition:transform 0.2s;display:inline-block;${isUncatCollapsed ? 'transform:rotate(-90deg);' : ''}">▼</span>
+            <span>📂</span>
+            <span style="flex:1;">${S.lang === 'ko' ? '미분류 문서' : 'Uncategorized'}</span>
+            <span class="badge" style="background:rgba(0,0,0,0.05);color:var(--t3);padding:1px 5px;border-radius:8px;font-size:9px;font-weight:normal;">${uncategorizedDocs.length}</span>
+          </div>
+          <div class="fld-list" style="margin-left:8px;border-left:1px dashed var(--bdr);padding-left:4px;${isUncatCollapsed ? 'display:none;' : ''}">
+            ${uncategorizedDocs.map(f => renderFileItem(f)).join('')}
+            ${uncategorizedDocs.length === 0 ? `<div class="emp" style="padding:8px;color:var(--t3);font-size:10px;">${S.lang === 'ko' ? '문서 없음' : 'No documents'}</div>` : ''}
+          </div>
+        </div>
+      `;
+      
+      el.innerHTML = foldersHtml;
+    } else {
+      // Flat representation
+      el.innerHTML = filtered.map(f => renderFileItem(f)).join('');
+    }
   },
 
   renderRaw() {
@@ -103,19 +170,52 @@ export const Sidebar = {
     
     // Event Delegation for file list
     const list = document.getElementById('md-l');
-    list?.addEventListener('click', (e) => {
+    list?.addEventListener('click', async (e) => {
       const delBtn = e.target.closest('.fi-del');
+      const fldBtn = e.target.closest('.fi-fld');
       const item = e.target.closest('.fi');
       
+      const fldH = e.target.closest('.fld-h');
+      const fldDel = e.target.closest('.fld-del');
+      const fldSec = e.target.closest('.fld-sec');
+
+      // Click folder delete button
+      if (fldDel && fldSec) {
+        e.stopPropagation();
+        const fldId = fldSec.dataset.folderId;
+        await this.deleteFolder(fldId);
+        return;
+      }
+
+      // Click folder header to collapse/expand
+      if (fldH && fldSec) {
+        e.stopPropagation();
+        const fldId = fldSec.dataset.folderId;
+        S.secOpen[fldId] = S.secOpen[fldId] !== false ? false : true;
+        this.render();
+        return;
+      }
+
+      // Delete file button
       if (delBtn && item) {
         e.stopPropagation();
         const id = item.dataset.id;
-        if (confirm('이 문서를 삭제하시겠습니까?')) {
+        const msg = S.lang === 'ko' ? '이 문서를 삭제하시겠습니까?' : 'Are you sure you want to delete this document?';
+        if (confirm(msg)) {
           this.deleteDoc(id);
         }
         return;
       }
 
+      // Move file to folder button
+      if (fldBtn && item) {
+        e.stopPropagation();
+        const id = item.dataset.id;
+        this.promptMoveDoc(id);
+        return;
+      }
+
+      // Open document
       if (item) {
         const id = item.dataset.id;
         this.openDoc(id);
@@ -173,6 +273,108 @@ export const Sidebar = {
       Editor.close();
     }
     this.render();
+  },
+
+  // --- Folder Management Methods ---
+  async createFolder() {
+    const isKo = S.lang === 'ko';
+    const promptMsg = isKo ? '새 폴더 이름을 입력하세요:' : 'Enter new folder name:';
+    const name = prompt(promptMsg);
+    if (!name || !name.trim()) return;
+    
+    const folder = { id: 'f_' + Date.now(), name: name.trim() };
+    if (!S.folders) S.folders = [];
+    S.folders.push(folder);
+    await IDB.put('folders', folder);
+    this.render();
+    UI.toast(isKo ? '폴더가 생성되었습니다.' : 'Folder created.', 'ok');
+  },
+
+  async deleteFolder(folderId) {
+    const isKo = S.lang === 'ko';
+    const confirmMsg = isKo 
+      ? '폴더를 삭제할까요? (내부 문서는 삭제되지 않고 미분류로 이동합니다)'
+      : 'Delete this folder? (Documents inside will be moved to Uncategorized)';
+      
+    if (confirm(confirmMsg)) {
+      S.folders = S.folders.filter(f => f.id !== folderId);
+      await IDB.del('folders', folderId);
+      
+      // Detach documents in the deleted folder
+      let updatedCount = 0;
+      for (const d of S.md) {
+        if (d.folderId === folderId) {
+          d.folderId = null;
+          d.updatedAt = new Date();
+          await IDB.put('docs', d);
+          try {
+            await SB.saveDoc(d);
+          } catch(e) {}
+          updatedCount++;
+        }
+      }
+      
+      // Cleanup S.docFolder state
+      Object.keys(S.docFolder).forEach(k => {
+        if (S.docFolder[k] === folderId) {
+          delete S.docFolder[k];
+        }
+      });
+      
+      this.render();
+      UI.toast(isKo ? '폴더가 삭제되었습니다.' : 'Folder deleted.', 'ok');
+    }
+  },
+
+  promptMoveDoc(docId) {
+    const isKo = S.lang === 'ko';
+    if (!S.folders || S.folders.length === 0) {
+      UI.toast(isKo ? '생성된 폴더가 없습니다. 📁+ 버튼으로 새 폴더를 먼저 만드세요.' : 'No folders found. Create a folder using the 📁+ button first.', 'warn');
+      return;
+    }
+
+    const folderListText = S.folders.map((f, idx) => `${idx + 1}: ${f.name}`).join('\n');
+    const body = isKo 
+      ? `이동할 폴더 번호를 입력하세요:\n\n0: [미분류 문서로 이동]\n${folderListText}`
+      : `Enter the folder number to move to:\n\n0: [Move to Uncategorized]\n${folderListText}`;
+      
+    const choice = prompt(body);
+    if (choice === null) return; // User cancelled
+    
+    const val = parseInt(choice.trim());
+    if (isNaN(val) || val < 0 || val > S.folders.length) {
+      UI.toast(isKo ? '유효하지 않은 입력입니다.' : 'Invalid choice.', 'warn');
+      return;
+    }
+    
+    if (val === 0) {
+      this.moveDocToFolder(docId, null);
+    } else {
+      const folder = S.folders[val - 1];
+      this.moveDocToFolder(docId, folder.id);
+    }
+  },
+
+  async moveDocToFolder(docId, folderId) {
+    const isKo = S.lang === 'ko';
+    const doc = S.md.find(d => d.id === docId);
+    if (!doc) return;
+    
+    doc.folderId = folderId;
+    doc.updatedAt = new Date();
+    await IDB.put('docs', doc);
+    try {
+      await SB.saveDoc(doc);
+    } catch(e) {}
+    
+    if (folderId) {
+      S.docFolder[docId] = folderId;
+    } else {
+      delete S.docFolder[docId];
+    }
+    
+    this.render();
+    UI.toast(isKo ? '이동 완료!' : 'Moved successfully!', 'ok');
   },
 
   initResizer() {

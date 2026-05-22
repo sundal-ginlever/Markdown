@@ -21,6 +21,7 @@ export const SettingsModal = {
   },
 
   switchProvider(p) {
+    this.saveCurrentTabInputs();
     S.ai.provider = p;
     
     // Update Tabs UI
@@ -30,6 +31,33 @@ export const SettingsModal = {
 
     // Update Forms UI
     this.renderForm(p);
+  },
+
+  saveCurrentTabInputs() {
+    const p = S.ai.provider;
+    if (p === 'claude') {
+      const k = document.getElementById('k-claude')?.value;
+      if (k !== undefined) S.ai.keys.claude = k;
+      const m = document.getElementById('m-claude')?.value;
+      if (m !== undefined) S.ai.models.claude = m;
+    } else if (p === 'gpt4') {
+      const k = document.getElementById('k-gpt4')?.value;
+      if (k !== undefined) S.ai.keys.gpt4 = k;
+      const m = document.getElementById('m-gpt4')?.value;
+      if (m !== undefined) S.ai.models.gpt4 = m;
+    } else if (p === 'gemini') {
+      const k = document.getElementById('k-gemini')?.value;
+      if (k !== undefined) S.ai.keys.gemini = k;
+      const m = document.getElementById('m-gemini')?.value;
+      if (m !== undefined) S.ai.models.gemini = m;
+    } else if (p === 'local') {
+      const u = document.getElementById('k-local-url')?.value;
+      if (u !== undefined) S.ai.localUrl = u;
+      const k = document.getElementById('k-local')?.value;
+      if (k !== undefined) S.ai.keys.local = k;
+      const m = document.getElementById('m-local')?.value;
+      if (m !== undefined) S.ai.models.local = m;
+    }
   },
 
   renderForm(p) {
@@ -86,22 +114,7 @@ export const SettingsModal = {
   },
 
   async save() {
-    const p = S.ai.provider;
-    
-    if (p === 'claude') {
-      S.ai.keys.claude = document.getElementById('k-claude')?.value || '';
-      S.ai.models.claude = document.getElementById('m-claude')?.value;
-    } else if (p === 'gpt4') {
-      S.ai.keys.gpt4 = document.getElementById('k-gpt4')?.value || '';
-      S.ai.models.gpt4 = document.getElementById('m-gpt4')?.value;
-    } else if (p === 'gemini') {
-      S.ai.keys.gemini = document.getElementById('k-gemini')?.value || '';
-      S.ai.models.gemini = document.getElementById('m-gemini')?.value;
-    } else if (p === 'local') {
-      S.ai.localUrl = document.getElementById('k-local-url')?.value || '';
-      S.ai.keys.local = document.getElementById('k-local')?.value || '';
-      S.ai.models.local = document.getElementById('m-local')?.value || '';
-    }
+    this.saveCurrentTabInputs();
     
     // Encrypt with AES-GCM via Web Crypto API before storing
     try {

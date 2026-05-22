@@ -14,8 +14,8 @@ export const SearchService = {
     return docs
       .map(doc => {
         let score = 0;
-        const name = doc.name.toLowerCase();
-        const content = doc.content.toLowerCase();
+        const name = (doc.name || '').toLowerCase();
+        const content = (doc.content || '').toLowerCase();
         
         if (name.includes(q)) score += 100;
         if (name === q) score += 500;
@@ -33,7 +33,7 @@ export const SearchService = {
    * Build a search snippet for results
    */
   buildSnippet(content, query, length = 150) {
-    if (!query) return '';
+    if (!content || !query) return '';
     const idx = content.toLowerCase().indexOf(query.toLowerCase());
     if (idx === -1) return content.substring(0, length) + '...';
     

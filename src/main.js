@@ -72,8 +72,19 @@ async function init() {
   // Initial Data Fetch
   const docs = await IDB.loadDocs();
   const rawFiles = await IDB.getAll('raw');
+  const folders = await IDB.getAll('folders');
+  
+  S.folders = folders || [];
   S.md = docs.sort((a, b) => b.createdAt - a.createdAt);
   S.raw = rawFiles.map(r => ({ id: r.id, name: r.name || 'Original File', type: r.type }));
+  
+  // Populate S.docFolder from loaded docs
+  S.md.forEach(d => {
+    if (d.folderId) {
+      S.docFolder[d.id] = d.folderId;
+    }
+  });
+
   Sidebar.render();
   
   Router.init();
@@ -104,6 +115,14 @@ function bindEvents() {
   document.getElementById('key-btn')?.addEventListener('click', () => UI.toggleModal('key-mo', true));
   document.getElementById('btn-up')?.addEventListener('click', () => UI.toggleModal('up-mo', true));
   
+  // New Folder Creation
+  document.querySelector('.btn-new-f')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    import('./components/sidebar.js').then(({ Sidebar }) => {
+      Sidebar.createFolder();
+    });
+  });
+
   document.querySelectorAll('.lang-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const l = btn.dataset.lang;
