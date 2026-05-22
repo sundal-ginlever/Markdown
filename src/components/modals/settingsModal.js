@@ -31,6 +31,13 @@ export const SettingsModal = {
 
     // Update Forms UI
     this.renderForm(p);
+
+    // Autofocus the first input in the new form
+    const container = document.getElementById('kf-claude');
+    const firstInput = container?.querySelector('input, select');
+    if (firstInput) {
+      setTimeout(() => firstInput.focus(), 50);
+    }
   },
 
   saveCurrentTabInputs() {

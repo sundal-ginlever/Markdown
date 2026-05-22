@@ -25,21 +25,29 @@ export const Editor = {
 
   async save() {
     if (!S.activeDoc) return;
+    const docToSave = { ...S.activeDoc };
     const content = document.getElementById('mdt').value;
-    const delta = content.length - (S.activeDoc.content?.length || 0);
+    const delta = content.length - (docToSave.content?.length || 0);
+    docToSave.content = content;
+    docToSave.updatedAt = new Date();
+    
+    // Immediately update reactive state for current doc
     S.activeDoc.content = content;
-    S.activeDoc.updatedAt = new Date();
+    S.activeDoc.updatedAt = docToSave.updatedAt;
     
-    await IDB.put('docs', S.activeDoc);
-    await IDB.put('logs', { docId: S.activeDoc.id, ts: Date.now(), msg: '문서 내용 직접 편집', delta });
-    await SB.saveDoc(S.activeDoc);
+    await IDB.put('docs', docToSave);
+    await IDB.put('logs', { docId: docToSave.id, ts: Date.now(), msg: '문서 내용 직접 편집', delta });
+    await SB.saveDoc(docToSave);
     
-    Viewer.render();
-    if (S.logOpen) {
-      import('./logPanel.js').then(({ LogPanel }) => LogPanel.render());
+    // Only update UI if the active document is still the same one
+    if (S.activeDoc && S.activeDoc.id === docToSave.id) {
+      Viewer.render();
+      if (S.logOpen) {
+        import('./logPanel.js').then(({ LogPanel }) => LogPanel.render());
+      }
+      this.setMode('view');
     }
     
-    this.setMode('view');
     UI.toast('저장되었습니다!', 'ok');
   },
 

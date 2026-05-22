@@ -20,7 +20,10 @@ export async function extractDocx(file, showPb, hidePb) {
           text: res.value || `[DOCX: ${file.name} — 텍스트를 추출할 수 없습니다.]`,
           cnt: 0
         });
-      } catch (err) { reject(err); }
+      } catch (err) { 
+        if (hidePb) hidePb();
+        reject(err); 
+      }
     };
     reader.onerror = reject;
     reader.readAsArrayBuffer(file);

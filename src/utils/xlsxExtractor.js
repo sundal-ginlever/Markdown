@@ -29,9 +29,20 @@ export function sheetsToText(data) {
   data.names.forEach(n => {
     txt += `\n\n### SHEET: ${n}\n`;
     const rows = data.sheets[n];
-    rows.forEach(r => {
-      txt += r.map(c => (c === null || c === undefined) ? '' : c).join('\t') + '\n';
-    });
+    if (Array.isArray(rows)) {
+      rows.forEach(r => {
+        if (Array.isArray(r)) {
+          const rowText = r.map(c => {
+            if (c === null || c === undefined) return '';
+            // Convert to string and sanitize inner tabs/newlines to prevent breaking TSV structure
+            return String(c)
+              .replace(/\r?\n/g, ' ')
+              .replace(/\t/g, ' ');
+          }).join('\t');
+          txt += rowText + '\n';
+        }
+      });
+    }
   });
   return txt.trim();
 }

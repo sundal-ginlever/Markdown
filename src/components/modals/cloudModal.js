@@ -11,6 +11,9 @@ export const CloudModal = {
     document.getElementById('cloud-setup-btn')?.addEventListener('click', () => {
       this.loadKeys();
       UI.toggleModal('cloud-mo', true);
+      setTimeout(() => {
+        document.getElementById('cloud-url')?.focus();
+      }, 100);
     });
     document.getElementById('btn-cloud-cancel')?.addEventListener('click', () => UI.toggleModal('cloud-mo', false));
     document.getElementById('btn-cloud-save')?.addEventListener('click', () => this.save());

@@ -38,6 +38,29 @@ export const UI = {
           return;
         }
       }
+
+      if (e.key === 'Tab') {
+        const activeModal = document.querySelector('.ov.show');
+        if (activeModal) {
+          const focusables = Array.from(activeModal.querySelectorAll('input, select, textarea, button, [tabindex="0"]'))
+            .filter(el => !el.disabled && el.style.display !== 'none' && el.style.visibility !== 'hidden');
+          if (focusables.length > 0) {
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            if (e.shiftKey) {
+              if (document.activeElement === first) {
+                last.focus();
+                e.preventDefault();
+              }
+            } else {
+              if (document.activeElement === last) {
+                first.focus();
+                e.preventDefault();
+              }
+            }
+          }
+        }
+      }
     });
   },
 

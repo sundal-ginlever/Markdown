@@ -33,12 +33,7 @@ export async function extractPdf(file, showExtract, hideExtract) {
         } else if (type === 'error') {
           if (hideExtract) hideExtract();
           worker.terminate();
-          resolve({
-            type: 'pdf',
-            text: `[PDF: ${file.name}] Worker 파싱 실패 (${message})`,
-            cnt: 0,
-            meta: { pages: 0 }
-          });
+          reject(new Error(message || 'PDF Worker 파싱에 실패했습니다.'));
         }
       };
 

@@ -112,8 +112,34 @@ function updateRTUI(status) {
 
 function bindEvents() {
   // Titlebar
-  document.getElementById('key-btn')?.addEventListener('click', () => UI.toggleModal('key-mo', true));
+  document.getElementById('key-btn')?.addEventListener('click', () => {
+    UI.toggleModal('key-mo', true);
+    setTimeout(() => {
+      const container = document.getElementById('kf-claude');
+      const firstInput = container?.querySelector('input, select');
+      if (firstInput) firstInput.focus();
+    }, 100);
+  });
   document.getElementById('btn-up')?.addEventListener('click', () => UI.toggleModal('up-mo', true));
+  
+  // Backdrop clicks to close modals
+  document.querySelectorAll('.ov').forEach(ov => {
+    ov.addEventListener('click', (e) => {
+      if (e.target === ov) {
+        if (ov.id === 'up-mo') {
+          import('./components/modals/uploadModal.js').then(({ UploadModal }) => UploadModal.close());
+        } else if (ov.id === 'key-mo') {
+          UI.toggleModal('key-mo', false);
+        } else if (ov.id === 'cloud-mo') {
+          UI.toggleModal('cloud-mo', false);
+        } else if (ov.id === 'reconv-mo') {
+          UI.toggleModal('reconv-mo', false);
+        } else if (ov.id === 'cmd-pal') {
+          ov.classList.remove('show');
+        }
+      }
+    });
+  });
   
   // New Folder Creation
   document.querySelector('.btn-new-f')?.addEventListener('click', (e) => {
