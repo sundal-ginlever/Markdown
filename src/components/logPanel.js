@@ -41,7 +41,7 @@ export const LogPanel = {
       <div class="lg-it">
         <div class="lg-time">${new Date(l.ts).toLocaleString()}</div>
         <div class="lg-msg">${l.msg || 'Document edited'}</div>
-        ${l.delta ? `<div class="lg-delta ${l.delta > 0 ? 'pos' : 'neg'}">${l.delta > 0 ? '+' : ''}${l.delta} chars</div>` : ''}
+        ${l.delta !== undefined ? `<div class="lg-delta ${l.delta > 0 ? 'pos' : 'neg'}">${l.delta > 0 ? '+' : ''}${l.delta} chars</div>` : ''}
       </div>
     `).join('');
   }

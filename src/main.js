@@ -14,6 +14,7 @@ import { extractDocx } from './utils/docxExtractor.js';
 // Services
 import { RealtimeService } from './services/realtime.js';
 import { Router } from './utils/router.js';
+import { SearchService } from './services/search.js';
 
 // Components
 import { UI } from './components/ui.js';
@@ -133,13 +134,13 @@ function bindEvents() {
     SEARCH.query = '';
     document.getElementById('hl-nav').style.display = 'none';
     Sidebar.render();
-    import('./components/viewer.js').then(({ Viewer }) => Viewer.render());
+    Viewer.render();
   });
   document.getElementById('btn-prev-hl')?.addEventListener('click', () => {
-    import('./services/search.js').then(({ SearchService }) => SearchService.prevHighlight());
+    SearchService.prevHighlight();
   });
   document.getElementById('btn-next-hl')?.addEventListener('click', () => {
-    import('./services/search.js').then(({ SearchService }) => SearchService.nextHighlight());
+    SearchService.nextHighlight();
   });
 
   // Mobile Sidebar Toggle
@@ -165,10 +166,10 @@ function bindEvents() {
     if (!S.activeDoc) return;
     const id = S.activeDoc.id;
     if (S.favorites.includes(id)) S.favorites = S.favorites.filter(x => x !== id);
-    else S.favorites.push(id);
+    else S.favorites = [...S.favorites, id];
     localStorage.setItem('dv_favs', JSON.stringify(S.favorites));
     Sidebar.render();
-    import('./components/viewer.js').then(({ Viewer }) => Viewer.renderFavBtn());
+    Viewer.renderFavBtn();
   };
   document.getElementById('btn-fav-doc')?.addEventListener('click', toggleFav);
 
@@ -197,7 +198,7 @@ function bindEvents() {
     
     const filtered = cmds.filter(c => c.t.toLowerCase().includes(q.toLowerCase()));
     list.innerHTML = filtered.map((c, i) => `
-      <div class="cmd-item" style="padding:12px 16px;cursor:pointer;color:var(--t1);border-radius:6px;display:flex;align-items:center;gap:12px;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" data-idx="${i}">
+      <div class="cmd-item" style="padding:12px 16px;cursor:pointer;color:var(--t1);border-radius:6px;display:flex;align-items:center;gap:12px;" onmouseover="this.style.background='var(--bg-hov)'" onmouseout="this.style.background='transparent'" data-idx="${i}">
         <span>${c.icon}</span> <span>${c.t}</span>
       </div>
     `).join('');
@@ -241,7 +242,13 @@ function bindEvents() {
     };
     
     inp.onblur = saveName;
-    inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') nameEl.textContent = curName; };
+    inp.onkeydown = e => {
+      if (e.key === 'Enter') inp.blur();
+      if (e.key === 'Escape') {
+        inp.onblur = null;
+        nameEl.textContent = curName;
+      }
+    };
     
     nameEl.innerHTML = '';
     nameEl.appendChild(inp);
@@ -268,6 +275,7 @@ function bindEvents() {
       IDB.clear('logs');
       S.md = [];
       S.raw = [];
+      S.activeDoc = null;
       Sidebar.render();
       Editor.close();
       UI.toast('전체 데이터가 초기화되었습니다', 'ok');
@@ -311,6 +319,7 @@ async function processFile() {
       content: mdc,
       styleId: S.selectedStyle,
       createdAt: new Date(),
+      updatedAt: new Date(),
       version: 1
     };
 

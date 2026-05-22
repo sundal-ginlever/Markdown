@@ -44,7 +44,21 @@ export const QAPanel = {
     if (!docId) return;
     const currentHist = QA.history[docId] || [];
     QA.history = { ...QA.history, [docId]: [...currentHist, { role, content, ts: Date.now() }] };
-    localStorage.setItem('dv_qa_hist', JSON.stringify(QA.history));
+    try {
+      localStorage.setItem('dv_qa_hist', JSON.stringify(QA.history));
+    } catch (err) {
+      console.warn('Quota exceeded on localStorage for QA history, pruning...', err);
+      for (const id of Object.keys(QA.history)) {
+        if (QA.history[id].length > 10) {
+          QA.history[id] = QA.history[id].slice(-10);
+        }
+      }
+      try {
+        localStorage.setItem('dv_qa_hist', JSON.stringify(QA.history));
+      } catch (err2) {
+        console.error('Failed to set localStorage even after pruning', err2);
+      }
+    }
     this.render();
   },
 

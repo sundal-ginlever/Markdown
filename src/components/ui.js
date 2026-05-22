@@ -6,12 +6,36 @@ export const UI = {
   initGlobal() {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        document.querySelectorAll('.ov.show').forEach(el => el.classList.remove('show'));
+        // 1. Close Command Palette if active
+        const cmdPal = document.getElementById('cmd-pal');
+        if (cmdPal && cmdPal.classList.contains('show')) {
+          cmdPal.classList.remove('show');
+          return;
+        }
+
+        // 2. Toggle Log Panel if active
         const lgb = document.getElementById('lgb');
         if (lgb && lgb.classList.contains('show')) {
           import('../state/store.js').then(({ S }) => {
-            if (S.logOpen) import('./logPanel.js').then(({ LogPanel }) => LogPanel.toggle());
+            if (S.logOpen) {
+              import('./logPanel.js').then(({ LogPanel }) => LogPanel.toggle());
+            }
           });
+          return;
+        }
+
+        // 3. Close Q&A Panel if active
+        const qaPanel = document.getElementById('qa-panel');
+        if (qaPanel && qaPanel.classList.contains('open')) {
+          import('./qaPanel.js').then(({ QAPanel }) => QAPanel.toggle());
+          return;
+        }
+
+        // 4. Dismiss other open modals
+        const otherModals = Array.from(document.querySelectorAll('.ov.show')).filter(el => el.id !== 'cmd-pal');
+        if (otherModals.length > 0) {
+          otherModals.forEach(el => el.classList.remove('show'));
+          return;
         }
       }
     });

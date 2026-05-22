@@ -1,15 +1,21 @@
 /**
  * Document Viewer Component
  */
-import { S } from '../state/store.js';
+import { S, SEARCH } from '../state/store.js';
 import { parseMd } from '../utils/markdown.js';
-import { SEARCH } from '../state/store.js';
 import { SearchService } from '../services/search.js';
 
 export const Viewer = {
   render() {
     const el = document.getElementById('mdv');
     if (!el || !S.activeDoc) return;
+    
+    // Reset search highlight navigation state on doc switch
+    SEARCH.activeHls = [];
+    SEARCH.hlIdx = -1;
+    const nav = document.getElementById('hl-nav');
+    if (nav) nav.style.display = 'none';
+
     el.innerHTML = parseMd(S.activeDoc.content);
     
     // Apply search highlights if query exists
@@ -78,6 +84,10 @@ export const Viewer = {
     const actCard = document.querySelector('#reconv-style-grid .style-card.act');
     if (!actCard || !S.activeDoc) return;
     const styleId = actCard.dataset.id;
+    if (S.activeDoc.styleId === styleId) {
+      UI.toast('이미 동일한 스타일입니다!', 'warn');
+      return;
+    }
     
     const [{ UI }, { IDB }, { STYLES }, { aiConvert }, { Sidebar }, { SB }] = await Promise.all([
       import('./ui.js'),
@@ -97,7 +107,22 @@ export const Viewer = {
       
       UI.showPb('AI 재변환 중...');
       const styleDef = STYLES.find(s => s.id === styleId) || STYLES[0];
-      const mdc = await aiConvert(rawRes.name, { type: rawRes.type, cnt: 0, text: '' }, rawRes.data, styleDef);
+      
+      let text = '';
+      if (typeof rawRes.data === 'string') {
+        text = rawRes.data;
+      } else if (rawRes.data instanceof ArrayBuffer) {
+        try {
+          const decoder = new TextDecoder('utf-8');
+          text = decoder.decode(rawRes.data);
+        } catch (err) {
+          console.warn('Failed to decode rawRes.data as UTF-8 string', err);
+        }
+      } else if (rawRes.data) {
+        text = String(rawRes.data);
+      }
+      
+      const mdc = await aiConvert(rawRes.name, { type: rawRes.type, cnt: 0, text: text }, text, styleDef);
       
       const delta = mdc.length - S.activeDoc.content.length;
       S.activeDoc.content = mdc;

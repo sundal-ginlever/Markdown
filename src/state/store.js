@@ -2,9 +2,37 @@
  * Reactive State Store for DocVault
  */
 
-const listeners = new Set();
+function makeReactive(obj, onNotify) {
+  if (typeof obj !== 'object' || obj === null) return obj;
+  if (obj instanceof File || obj instanceof Blob || obj instanceof Date || obj instanceof Set || obj instanceof Map) return obj;
+  
+  return new Proxy(obj, {
+    get(target, key) {
+      const val = target[key];
+      if (typeof val === 'object' && val !== null) {
+        return makeReactive(val, onNotify);
+      }
+      return val;
+    },
+    set(target, key, value) {
+      target[key] = value;
+      onNotify();
+      return true;
+    },
+    deleteProperty(target, key) {
+      const res = delete target[key];
+      onNotify();
+      return res;
+    }
+  });
+}
 
-export const S = new Proxy({
+const listeners = new Set();
+function notify() {
+  listeners.forEach(fn => fn(S, QA, SEARCH));
+}
+
+export const S = makeReactive({
   raw: [],
   md: [],
   logs: {},
@@ -18,8 +46,8 @@ export const S = new Proxy({
   lang: localStorage.getItem('dv_lang') || 'ko',
   folders: [],
   docFolder: {},
-  favorites: JSON.parse(localStorage.getItem('dv_favs') || '[]'),
-  docTags: JSON.parse(localStorage.getItem('dv_tags') || '{}'),
+  favorites: (() => { try { return JSON.parse(localStorage.getItem('dv_favs') || '[]'); } catch { return []; } })(),
+  docTags: (() => { try { return JSON.parse(localStorage.getItem('dv_tags') || '{}'); } catch { return {}; } })(),
   ai: {
     provider: 'claude',
     keys: { claude: '', gpt4: '', gemini: '', local: '' },
@@ -32,43 +60,21 @@ export const S = new Proxy({
     localUrl: ''
   },
   sort: 'new'
-}, {
-  set(target, key, value) {
-    target[key] = value;
-    notify();
-    return true;
-  }
-});
+}, notify);
 
-export const QA = new Proxy({
-  history: JSON.parse(localStorage.getItem('dv_qa_hist') || '{}'),
+export const QA = makeReactive({
+  history: (() => { try { return JSON.parse(localStorage.getItem('dv_qa_hist') || '{}'); } catch { return {}; } })(),
   activeDocId: null,
   loading: false,
   expanded: false,
-}, {
-  set(target, key, value) {
-    target[key] = value;
-    notify();
-    return true;
-  }
-});
+}, notify);
 
-export const SEARCH = new Proxy({
+export const SEARCH = makeReactive({
   query: '',
   filter: 'all',
   activeHls: [],
   hlIdx: 0,
-}, {
-  set(target, key, value) {
-    target[key] = value;
-    notify();
-    return true;
-  }
-});
-
-function notify() {
-  listeners.forEach(fn => fn(S, QA, SEARCH));
-}
+}, notify);
 
 export function subscribe(fn) {
   listeners.add(fn);

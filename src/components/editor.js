@@ -69,11 +69,13 @@ export const Editor = {
 
   close() {
     S.activeDoc = null;
+    S.mode = 'view';
     document.getElementById('doc-tb').style.display = 'none';
     const mdv = document.getElementById('mdv');
     if (mdv) mdv.innerHTML = '';
     const wlc = document.getElementById('wlc-a');
     if (wlc) wlc.style.display = 'flex';
     document.getElementById('edit-a').style.display = 'none';
+    document.getElementById('view-a').style.display = 'block';
   }
 };

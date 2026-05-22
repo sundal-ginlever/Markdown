@@ -7,6 +7,8 @@ import { IDB } from '../services/db.js';
 import { Viewer } from './viewer.js';
 import { QAPanel } from './qaPanel.js';
 import { SearchService } from '../services/search.js';
+import { SB } from '../services/supabase.js';
+import { Router } from '../utils/router.js';
 
 export const Sidebar = {
   render() {
@@ -150,6 +152,7 @@ export const Sidebar = {
     const doc = S.md.find(d => d.id === id);
     if (!doc) return;
     S.activeDoc = doc;
+    Router.navigate(id);
     Viewer.render();
     this.render();
     QAPanel.render();
@@ -157,6 +160,13 @@ export const Sidebar = {
 
   async deleteDoc(id) {
     await IDB.deleteDoc(id);
+    try {
+      await SB.deleteDoc(id);
+    } catch (e) {
+      console.warn('Supabase delete doc failed, will sync later:', e);
+    }
+    S.favorites = S.favorites.filter(x => x !== id);
+    localStorage.setItem('dv_favs', JSON.stringify(S.favorites));
     S.md = S.md.filter(d => d.id !== id);
     if (S.activeDoc?.id === id) {
       const { Editor } = await import('./editor.js');

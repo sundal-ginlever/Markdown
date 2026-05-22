@@ -52,7 +52,20 @@ export const SearchService = {
 
   applyHighlights(container, query) {
     if (!query) return;
-    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+    const filter = {
+      acceptNode(node) {
+        let parent = node.parentNode;
+        while (parent && parent !== container) {
+          const tag = parent.tagName ? parent.tagName.toLowerCase() : '';
+          if (tag === 'pre' || tag === 'code') {
+            return NodeFilter.FILTER_REJECT;
+          }
+          parent = parent.parentNode;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    };
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, filter, false);
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
     

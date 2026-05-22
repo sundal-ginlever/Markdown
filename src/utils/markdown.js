@@ -8,9 +8,7 @@ import DOMPurify from 'dompurify';
 // Configure Marked
 marked.setOptions({
   gfm: true,
-  breaks: true,
-  headerIds: true,
-  mangle: false
+  breaks: true
 });
 
 // Custom Renderer for Admonitions (Github style)
