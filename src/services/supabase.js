@@ -59,7 +59,20 @@ export const SB = {
   },
 
   async saveDoc(mf, rawDoc) {
-    if (!this.config?.url || !this.config?.key) return;
+    if (!this.client || !this.user) return;
+    
+    // Deduplicate: remove any existing saveDoc items for this doc from the queue
+    try {
+      const queue = await IDB.getAll('sync_queue');
+      for (const item of queue) {
+        if (item.action === 'saveDoc' && item.data?.mf?.id === mf.id) {
+          await IDB.del('sync_queue', item.id);
+        }
+      }
+    } catch (e) {
+      console.warn('Queue deduplication failed:', e);
+    }
+
     const payload = {
       action: 'saveDoc',
       data: { mf, rawDoc },
@@ -87,7 +100,15 @@ export const SB = {
           await IDB.del('sync_queue', item.id);
         } catch (e) {
           console.warn('Sync item failed, will retry later:', e);
-          break; // Stop processing queue if one fails (likely offline)
+          if (e.message === 'VERSION_CONFLICT') {
+            // Discard this stale item to prevent deadlock, but notify the user
+            await IDB.del('sync_queue', item.id);
+            import('../components/ui.js').then(({ UI }) => {
+              UI.toast('클라우드와 버전 충돌이 발생하여 로컬 복사본을 보관하고 동기화를 건너뛰었습니다.', 'warn');
+            });
+          } else {
+            break; // Stop processing queue if one fails (likely offline)
+          }
         }
       }
     } finally {
@@ -96,6 +117,28 @@ export const SB = {
   },
 
   async _performSaveDoc(mf, rawDoc) {
+    // 1. Fetch current remote version first to check for conflicts (Optimistic Concurrency Control)
+    let remoteVersion = 0;
+    try {
+      const { data: remoteData, error: fetchError } = await this.client
+        .from('m_documents')
+        .select('version')
+        .eq('id', mf.id)
+        .maybeSingle();
+      
+      if (!fetchError && remoteData) {
+        remoteVersion = remoteData.version || 0;
+      }
+    } catch (e) {
+      console.warn('Failed to fetch remote version, proceeding anyway:', e);
+    }
+
+    // 2. Conflict detection: Remote version is strictly newer than our local base version
+    if (remoteVersion > (mf.version || 0)) {
+      console.warn(`Version conflict detected for doc ${mf.id}. Remote: ${remoteVersion}, Local base: ${mf.version}`);
+      throw new Error('VERSION_CONFLICT');
+    }
+
     const payload = {
       id: mf.id,
       user_id: this.user.id,
@@ -105,7 +148,7 @@ export const SB = {
       style_id: mf.styleId || 'dev',
       sheet_count: mf.cnt || 0,
       updated_at: new Date().toISOString(),
-      version: (mf.version || 1) + 1
+      version: Math.max(remoteVersion, mf.version || 0) + 1
     };
 
     if (rawDoc !== undefined) {
@@ -114,21 +157,12 @@ export const SB = {
       payload.raw_content = rawDoc?.content || null;
     }
 
-    // Optimistic concurrency control: match by id and current version
-    const query = this.client
+    const { data, error } = await this.client
       .from('m_documents')
-      .upsert(payload, { onConflict: 'id' });
-
-    if (mf.version) {
-      query.eq('version', mf.version);
-    }
-
-    const { data, error } = await query.select();
+      .upsert(payload, { onConflict: 'id' })
+      .select();
 
     if (error) {
-      if (error.code === '23505' || error.code === 'PGRST116') {
-        throw new Error('VERSION_CONFLICT');
-      }
       throw error;
     }
 
@@ -153,7 +187,20 @@ export const SB = {
   },
 
   async deleteDoc(docId) {
-    if (!this.config?.url || !this.config?.key) return;
+    if (!this.client || !this.user) return;
+
+    // Deduplicate: remove any existing saveDoc/deleteDoc items for this doc from the queue
+    try {
+      const queue = await IDB.getAll('sync_queue');
+      for (const item of queue) {
+        if (item.data?.mf?.id === docId || item.data?.docId === docId) {
+          await IDB.del('sync_queue', item.id);
+        }
+      }
+    } catch (e) {
+      console.warn('Queue cleanup failed:', e);
+    }
+
     const payload = { action: 'deleteDoc', data: { docId }, ts: Date.now() };
     await IDB.put('sync_queue', payload);
     this.processQueue();

@@ -11,7 +11,7 @@ marked.setOptions({
   breaks: true
 });
 
-// Custom Renderer for Admonitions (Github style)
+// Custom Renderer for Admonitions and Heading IDs
 const renderer = {
   blockquote({ text }) {
     // In marked v11+, the argument is a token object
@@ -29,6 +29,19 @@ const renderer = {
       </blockquote>`;
     }
     return `<blockquote>${text}</blockquote>`;
+  },
+
+  heading({ text, depth }) {
+    // Create a safe, slugified ID from the text content (supporting Korean, English, and numeric slugs)
+    const rawText = text.replace(/<[^>]*>/g, ''); // strip HTML tags
+    const id = rawText
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\sㄱ-ㅎㅏ-ㅣ가-힣-]/g, '') // Keep letters, numbers, spaces, Korean, and hyphens
+      .replace(/[\s_]+/g, '-')                  // Replace spaces and underscores with hyphens
+      .replace(/-+/g, '-');                     // Replace multiple hyphens with a single hyphen
+
+    return `<h${depth} id="${id}">${text}</h${depth}>`;
   }
 };
 

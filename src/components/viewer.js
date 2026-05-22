@@ -4,6 +4,7 @@
 import { S, SEARCH } from '../state/store.js';
 import { parseMd } from '../utils/markdown.js';
 import { SearchService } from '../services/search.js';
+import { UI } from './ui.js';
 
 export const Viewer = {
   render() {
@@ -17,6 +18,28 @@ export const Viewer = {
     if (nav) nav.style.display = 'none';
 
     el.innerHTML = parseMd(S.activeDoc.content);
+    
+    // Bind Wikilinks clicking
+    el.querySelectorAll('.wiki-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const docName = link.querySelector('span')?.textContent?.trim();
+        if (!docName) return;
+        
+        const targetDoc = S.md.find(d => 
+          d.name.toLowerCase() === docName.toLowerCase() || 
+          d.name.replace(/\.[^.]+$/, '').toLowerCase() === docName.toLowerCase()
+        );
+        
+        if (targetDoc) {
+          import('./sidebar.js').then(({ Sidebar }) => {
+            Sidebar.openDoc(targetDoc.id);
+          });
+        } else {
+          UI.toast('이동할 대상 문서를 찾을 수 없습니다: ' + docName, 'warn');
+        }
+      });
+    });
     
     // Apply search highlights if query exists
     if (SEARCH.query) {
@@ -89,8 +112,7 @@ export const Viewer = {
       return;
     }
     
-    const [{ UI }, { IDB }, { STYLES }, { aiConvert }, { Sidebar }, { SB }] = await Promise.all([
-      import('./ui.js'),
+    const [{ IDB }, { STYLES }, { aiConvert }, { Sidebar }, { SB }] = await Promise.all([
       import('../services/db.js'),
       import('../state/store.js'),
       import('../services/ai.js'),

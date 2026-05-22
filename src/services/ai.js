@@ -185,12 +185,26 @@ Instructions:
   if (p === 'gemini') {
     const geminiMsgs = [
       { role: 'user', parts: [{ text: systemPrompt + '\n\nUnderstood. I will answer questions about this document.' }] },
-      { role: 'model', parts: [{ text: '네, 문서를 읽었습니다. 질문해주세요.' }] },
-      ...messages.map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }]
-      }))
+      { role: 'model', parts: [{ text: '네, 문서를 읽었습니다. 질문해주세요.' }] }
     ];
+
+    let lastRole = 'model';
+    messages.forEach(m => {
+      const currentRole = m.role === 'assistant' ? 'model' : 'user';
+      if (currentRole !== lastRole) {
+        geminiMsgs.push({
+          role: currentRole,
+          parts: [{ text: m.content }]
+        });
+        lastRole = currentRole;
+      } else {
+        // Merge consecutive roles to preserve content without breaking Gemini role rules
+        if (geminiMsgs.length > 0) {
+          geminiMsgs[geminiMsgs.length - 1].parts[0].text += '\n\n' + m.content;
+        }
+      }
+    });
+
     const url = '/api/gemini';
     const r = await fetch(url, {
       method: 'POST',

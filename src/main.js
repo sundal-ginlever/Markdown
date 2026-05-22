@@ -174,6 +174,9 @@ function bindEvents() {
   document.getElementById('btn-fav-doc')?.addEventListener('click', toggleFav);
 
   // Command Palette
+  let cmdSelIdx = 0;
+  let currentFilteredCmds = [];
+
   const toggleCmdPal = (show) => {
     const pal = document.getElementById('cmd-pal');
     if (!pal) return;
@@ -196,19 +199,63 @@ function bindEvents() {
       ...S.md.map(d => ({ t: `문서 열기: ${d.name}`, icon: '🗒', action: () => Sidebar.openDoc(d.id) }))
     ];
     
-    const filtered = cmds.filter(c => c.t.toLowerCase().includes(q.toLowerCase()));
-    list.innerHTML = filtered.map((c, i) => `
-      <div class="cmd-item" style="padding:12px 16px;cursor:pointer;color:var(--t1);border-radius:6px;display:flex;align-items:center;gap:12px;" onmouseover="this.style.background='var(--bg-hov)'" onmouseout="this.style.background='transparent'" data-idx="${i}">
-        <span>${c.icon}</span> <span>${c.t}</span>
-      </div>
-    `).join('');
+    currentFilteredCmds = cmds.filter(c => c.t.toLowerCase().includes(q.toLowerCase()));
+    cmdSelIdx = 0;
+    drawCmdList();
+  };
+
+  const drawCmdList = () => {
+    const list = document.getElementById('cmd-list');
+    if (!list) return;
+
+    list.innerHTML = currentFilteredCmds.map((c, i) => {
+      const isSel = i === cmdSelIdx;
+      return `
+        <div class="cmd-item" style="padding:12px 16px;cursor:pointer;color:var(--t1);border-radius:6px;display:flex;align-items:center;gap:12px;background:${isSel ? 'var(--bg-hov)' : 'transparent'};" data-idx="${i}">
+          <span>${c.icon}</span> <span>${c.t}</span>
+        </div>
+      `;
+    }).join('');
     
     list.querySelectorAll('.cmd-item').forEach(el => {
-      el.onclick = () => { toggleCmdPal(false); filtered[el.dataset.idx].action(); };
+      el.onclick = () => {
+        toggleCmdPal(false);
+        currentFilteredCmds[el.dataset.idx].action();
+      };
+      el.onmouseover = () => {
+        cmdSelIdx = parseInt(el.dataset.idx);
+        drawCmdList();
+      };
     });
+
+    const activeEl = list.querySelector(`.cmd-item[data-idx="${cmdSelIdx}"]`);
+    if (activeEl) {
+      activeEl.scrollIntoView({ block: 'nearest' });
+    }
   };
 
   document.getElementById('cmd-input')?.addEventListener('input', (e) => renderCmdList(e.target.value));
+  document.getElementById('cmd-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (currentFilteredCmds.length > 0) {
+        cmdSelIdx = (cmdSelIdx + 1) % currentFilteredCmds.length;
+        drawCmdList();
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (currentFilteredCmds.length > 0) {
+        cmdSelIdx = (cmdSelIdx - 1 + currentFilteredCmds.length) % currentFilteredCmds.length;
+        drawCmdList();
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (currentFilteredCmds.length > 0 && currentFilteredCmds[cmdSelIdx]) {
+        toggleCmdPal(false);
+        currentFilteredCmds[cmdSelIdx].action();
+      }
+    }
+  });
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault();
@@ -261,8 +308,13 @@ function bindEvents() {
   document.getElementById('b-qa')?.addEventListener('click', () => QAPanel.toggle());
   document.getElementById('qa-close-btn')?.addEventListener('click', () => QAPanel.toggle());
   document.getElementById('qa-send')?.addEventListener('click', () => QAPanel.ask());
-  document.getElementById('qa-input')?.addEventListener('keypress', (e) => {
+  const qaInp = document.getElementById('qa-input');
+  qaInp?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); QAPanel.ask(); }
+  });
+  qaInp?.addEventListener('input', () => {
+    qaInp.style.height = 'auto';
+    qaInp.style.height = Math.min(120, qaInp.scrollHeight) + 'px';
   });
 
   // Additional Document Actions

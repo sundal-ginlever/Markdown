@@ -21,14 +21,16 @@ export const QAPanel = {
     const q = inp?.value.trim();
     if (!q || QA.loading || !S.activeDoc) return;
 
+    const docId = S.activeDoc.id;
+    const historyArr = [...(QA.history[docId] || [])];
+
     this.addMessage('user', q);
     inp.value = '';
+    inp.style.height = 'auto';
     QA.loading = true;
     this.renderTyping(true);
 
     try {
-      const docId = S.activeDoc.id;
-      const historyArr = QA.history[docId] || [];
       const ans = await callQAApi(q, S.activeDoc, historyArr);
       this.addMessage('ai', ans);
     } catch (e) {

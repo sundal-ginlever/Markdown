@@ -35,8 +35,8 @@ export const UploadModal = {
           }
         }
         
-        // Block global drag-drop only when modal is open
-        if (document.getElementById('up-mo')?.classList.contains('show')) {
+        // Prevent browser navigation and state loss by blocking default dragover and drop globally at all times
+        if (evt === 'dragover' || evt === 'drop') {
           e.preventDefault();
           e.stopPropagation();
         }

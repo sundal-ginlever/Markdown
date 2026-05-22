@@ -35,7 +35,11 @@ export const Router = {
 
   navigate(docId) {
     const url = new URL(window.location.href);
-    url.searchParams.set('doc', docId);
+    if (docId) {
+      url.searchParams.set('doc', docId);
+    } else {
+      url.searchParams.delete('doc');
+    }
     window.history.pushState({}, '', url);
   },
 

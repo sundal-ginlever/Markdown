@@ -37,11 +37,19 @@ export const RealtimeService = {
       if (idx !== -1) {
         // Only update if remote version is newer
         if ((newDoc.version || 0) > (S.md[idx].version || 0)) {
-          S.md[idx] = this.mapDoc(newDoc);
+          const mapped = this.mapDoc(newDoc);
+          S.md[idx] = mapped;
           Sidebar.render();
           if (S.activeDoc?.id === newDoc.id) {
-            UI.toast('Document updated from another device', 'info');
-            // Logic to prompt user to reload or auto-update
+            if (S.mode === 'view') {
+              S.activeDoc = mapped;
+              import('../components/viewer.js').then(({ Viewer }) => {
+                Viewer.render();
+              });
+              UI.toast('다른 기기에서 변경된 내용이 실시간으로 반영되었습니다.', 'ok');
+            } else {
+              UI.toast('다른 기기에서 이 문서가 업데이트되었습니다. 저장 시 버전 충돌이 발생할 수 있습니다.', 'warn');
+            }
           }
         }
       }
@@ -58,6 +66,7 @@ export const RealtimeService = {
       content: d.content,
       styleId: d.style_id,
       createdAt: new Date(d.created_at),
+      updatedAt: d.updated_at ? new Date(d.updated_at) : new Date(),
       version: d.version || 1
     };
   },

@@ -1,7 +1,7 @@
 /**
  * Full-text Search and Highlighting Service
  */
-import { S } from '../state/store.js';
+import { S, SEARCH } from '../state/store.js';
 
 export const SearchService = {
   /**
@@ -97,49 +97,41 @@ export const SearchService = {
 
     // Collect highlights and update UI
     const marks = Array.from(container.querySelectorAll('mark.hl'));
-    import('../state/store.js').then(({ SEARCH }) => {
-      SEARCH.activeHls = marks;
-      SEARCH.hlIdx = marks.length > 0 ? 0 : -1;
-      this.updateHighlightUI();
-    });
+    SEARCH.activeHls = marks;
+    SEARCH.hlIdx = marks.length > 0 ? 0 : -1;
+    this.updateHighlightUI();
   },
 
   updateHighlightUI() {
-    import('../state/store.js').then(({ SEARCH }) => {
-      const { activeHls, hlIdx } = SEARCH;
-      const nav = document.getElementById('hl-nav');
-      if (!nav) return;
-      if (activeHls.length === 0) {
-        nav.style.display = 'none';
-        return;
-      }
-      nav.style.display = 'flex';
-      document.getElementById('hl-status').textContent = `${hlIdx + 1}/${activeHls.length}`;
-      
-      activeHls.forEach((hl, i) => {
-        if (i === hlIdx) hl.classList.add('hl-active');
-        else hl.classList.remove('hl-active');
-      });
-      
-      if (hlIdx >= 0 && activeHls[hlIdx]) {
-        activeHls[hlIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+    const { activeHls, hlIdx } = SEARCH;
+    const nav = document.getElementById('hl-nav');
+    if (!nav) return;
+    if (activeHls.length === 0) {
+      nav.style.display = 'none';
+      return;
+    }
+    nav.style.display = 'flex';
+    document.getElementById('hl-status').textContent = `${hlIdx + 1}/${activeHls.length}`;
+    
+    activeHls.forEach((hl, i) => {
+      if (i === hlIdx) hl.classList.add('hl-active');
+      else hl.classList.remove('hl-active');
     });
+    
+    if (hlIdx >= 0 && activeHls[hlIdx]) {
+      activeHls[hlIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   },
 
   nextHighlight() {
-    import('../state/store.js').then(({ SEARCH }) => {
-      if (!SEARCH.activeHls.length) return;
-      SEARCH.hlIdx = (SEARCH.hlIdx + 1) % SEARCH.activeHls.length;
-      this.updateHighlightUI();
-    });
+    if (!SEARCH.activeHls.length) return;
+    SEARCH.hlIdx = (SEARCH.hlIdx + 1) % SEARCH.activeHls.length;
+    this.updateHighlightUI();
   },
   
   prevHighlight() {
-    import('../state/store.js').then(({ SEARCH }) => {
-      if (!SEARCH.activeHls.length) return;
-      SEARCH.hlIdx = (SEARCH.hlIdx - 1 + SEARCH.activeHls.length) % SEARCH.activeHls.length;
-      this.updateHighlightUI();
-    });
+    if (!SEARCH.activeHls.length) return;
+    SEARCH.hlIdx = (SEARCH.hlIdx - 1 + SEARCH.activeHls.length) % SEARCH.activeHls.length;
+    this.updateHighlightUI();
   }
 };

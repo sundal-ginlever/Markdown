@@ -6,6 +6,7 @@ import { IDB } from '../services/db.js';
 import { UI } from './ui.js';
 import { Viewer } from './viewer.js';
 import { SB } from '../services/supabase.js';
+import { Router } from '../utils/router.js';
 
 export const Editor = {
   setMode(m) {
@@ -27,6 +28,7 @@ export const Editor = {
     const content = document.getElementById('mdt').value;
     const delta = content.length - (S.activeDoc.content?.length || 0);
     S.activeDoc.content = content;
+    S.activeDoc.updatedAt = new Date();
     
     await IDB.put('docs', S.activeDoc);
     await IDB.put('logs', { docId: S.activeDoc.id, ts: Date.now(), msg: '문서 내용 직접 편집', delta });
@@ -70,6 +72,7 @@ export const Editor = {
   close() {
     S.activeDoc = null;
     S.mode = 'view';
+    Router.navigate(null);
     document.getElementById('doc-tb').style.display = 'none';
     const mdv = document.getElementById('mdv');
     if (mdv) mdv.innerHTML = '';
