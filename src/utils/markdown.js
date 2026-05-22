@@ -56,8 +56,13 @@ export function parseMd(s) {
   // ==Highlight==
   processed = processed.replace(/==(.+?)==/g, '<mark class="md-mark">$1</mark>');
   
-  // [[Wikilink]]
-  processed = processed.replace(/\[\[([^\]]+)\]\]/g, '<a href="#" class="wiki-link">[[<span>$1</span>]]</a>');
+  // [[Wikilink]] or [[Wikilink|Alias]]
+  processed = processed.replace(/\[\[([^\]]+)\]\]/g, (match, content) => {
+    const parts = content.split('|');
+    const target = parts[0].trim();
+    const display = parts[1] ? parts[1].trim() : target;
+    return `<a href="#" class="wiki-link" data-target="${target}">[[<span>${display}</span>]]</a>`;
+  });
 
   // Convert to HTML
   const rawHtml = marked.parse(processed);

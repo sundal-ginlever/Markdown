@@ -735,3 +735,70 @@ mark.md-mark { background: rgba(194,65,12,0.2); color: var(--t1); padding: 0 4px
 .lg-msg { color: var(--t1); margin-bottom: 4px; }
 .lg-delta.pos { color: var(--grn); }
 .lg-delta.neg { color: var(--red); }
+
+/* --- Cycle 3 Custom Styling --- */
+/* Dead wikilinks styling */
+.wiki-link.wiki-dead {
+  color: #b91c1c !important;
+  text-decoration: dashed underline !important;
+  opacity: 0.7;
+  cursor: help;
+}
+.wiki-link.wiki-dead:hover {
+  opacity: 1;
+}
+
+/* Pulsing animated sync status dot */
+@keyframes syncPulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.sync-dot.on {
+  background: var(--grn) !important;
+  box-shadow: 0 0 6px var(--grn) !important;
+  animation: syncPulse 2s infinite ease-in-out;
+}
+.sync-dot.offline {
+  background: var(--yel) !important;
+  box-shadow: 0 0 6px var(--yel) !important;
+}
+.sync-dot.off {
+  background: var(--t3) !important;
+  box-shadow: none !important;
+}
+
+/* Cloud Modal Authentication panel layout */
+.cloud-auth-box {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--bdr);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: fadeIn 0.2s ease-out;
+}
+.auth-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--t1);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.auth-status-bar {
+  font-size: 12px;
+  color: var(--t2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-surf);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--bdr);
+}
+.auth-email {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--acc);
+}
+

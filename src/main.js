@@ -58,6 +58,45 @@ async function init() {
   if (sbClient) {
     RealtimeService.subscribe();
   }
+
+  // Dynamic Sync Status UI Updater
+  window.updateSyncStatusUI = function() {
+    const dot = document.getElementById('sync-dot');
+    const lbl = document.getElementById('sync-lbl');
+    if (!dot || !lbl) return;
+    const isKo = S.lang === 'ko';
+    if (!navigator.onLine) {
+      dot.className = 'sync-dot offline';
+      lbl.textContent = isKo ? '오프라인' : 'Offline';
+      lbl.title = isKo ? '네트워크가 끊김. 연결 시 자동 동기화됩니다.' : 'Network disconnected. Will sync when restored.';
+      return;
+    }
+    if (SB.client && SB.user) {
+      dot.className = 'sync-dot on';
+      lbl.textContent = SB.user.email.split('@')[0];
+      lbl.title = isKo ? `로그인 계정: ${SB.user.email} (온라인)` : `Logged in: ${SB.user.email} (Online)`;
+    } else {
+      dot.className = 'sync-dot off';
+      lbl.textContent = '';
+      lbl.title = isKo ? '클라우드 비활성화됨' : 'Cloud sync inactive';
+    }
+  };
+
+  // Listen to network status transitions
+  window.addEventListener('online', () => {
+    window.updateSyncStatusUI();
+    if (SB.client && SB.user) {
+      UI.toast(S.lang === 'ko' ? '인터넷에 다시 연결되었습니다. 동기화를 진행합니다.' : 'Connection restored. Syncing changes...', 'ok');
+      SB.processQueue();
+    }
+  });
+  window.addEventListener('offline', () => {
+    window.updateSyncStatusUI();
+    UI.toast(S.lang === 'ko' ? '오프라인 모드입니다. 변경사항은 로컬에 임시 저장됩니다.' : 'Offline mode. Changes will be saved locally.', 'warn');
+  });
+
+  // Render initial status
+  window.updateSyncStatusUI();
   
   // Component Initializations
   UI.initGlobal();
@@ -89,8 +128,11 @@ async function init() {
   
   Router.init();
 
-  // Watch Realtime Status
-  subscribe((state) => updateRTUI(state.rtStatus));
+  // Watch Realtime Status & Update Sync UI
+  subscribe((state) => {
+    updateRTUI(state.rtStatus);
+    if (window.updateSyncStatusUI) window.updateSyncStatusUI();
+  });
 
   console.log('DocVault Ready.');
 }
@@ -365,17 +407,35 @@ function bindEvents() {
   // Additional Document Actions
   document.getElementById('b-export')?.addEventListener('click', () => Editor.export());
   document.getElementById('btn-export-all')?.addEventListener('click', () => Editor.exportAll());
-  document.getElementById('btn-clear-all')?.addEventListener('click', () => {
-    if (confirm('모든 문서를 삭제하시겠습니까? (복구 불가)')) {
-      IDB.clear('docs');
-      IDB.clear('raw');
-      IDB.clear('logs');
-      S.md = [];
-      S.raw = [];
-      S.activeDoc = null;
-      Sidebar.render();
-      Editor.close();
-      UI.toast('전체 데이터가 초기화되었습니다', 'ok');
+  document.getElementById('btn-clear-all')?.addEventListener('click', async () => {
+    const isKo = S.lang === 'ko';
+    const msg = isKo ? '모든 데이터를 완전히 초기화하시겠습니까? (문서, 원본 파일, 편집 로그, 폴더 정보 모두 삭제되며 복구 불가)' : 'Are you sure you want to clear all data? (All documents, raw files, logs, and folders will be deleted permanently)';
+    if (confirm(msg)) {
+      try {
+        await Promise.all([
+          IDB.clear('docs'),
+          IDB.clear('raw'),
+          IDB.clear('logs'),
+          IDB.clear('folders')
+        ]);
+        S.md = [];
+        S.raw = [];
+        S.folders = [];
+        S.activeDoc = null;
+        S.favorites = [];
+        localStorage.removeItem('dv_favs');
+        S.docFolder = {};
+        
+        Sidebar.render();
+        Editor.close();
+        
+        if (window.updateSyncStatusUI) window.updateSyncStatusUI();
+        
+        UI.toast(isKo ? '전체 데이터가 초기화되었습니다' : 'All data cleared successfully.', 'ok');
+      } catch (err) {
+        console.error('Clear all error:', err);
+        UI.toast(isKo ? '초기화 오류: ' + err.message : 'Reset error: ' + err.message, 'err');
+      }
     }
   });
 }

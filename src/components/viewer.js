@@ -19,24 +19,31 @@ export const Viewer = {
 
     el.innerHTML = parseMd(S.activeDoc.content);
     
-    // Bind Wikilinks clicking
+    // Bind Wikilinks clicking & Check dead links
     el.querySelectorAll('.wiki-link').forEach(link => {
+      const docName = link.getAttribute('data-target') || link.querySelector('span')?.textContent?.trim();
+      if (!docName) return;
+      
+      const targetDoc = S.md.find(d => 
+        d.name.toLowerCase() === docName.toLowerCase() || 
+        d.name.replace(/\.[^.]+$/, '').toLowerCase() === docName.toLowerCase()
+      );
+      
+      if (!targetDoc) {
+        link.classList.add('wiki-dead');
+        link.title = S.lang === 'ko' ? '대상 문서가 존재하지 않습니다.' : 'Target document does not exist.';
+      } else {
+        link.title = S.lang === 'ko' ? `이동: ${targetDoc.name}` : `Navigate to: ${targetDoc.name}`;
+      }
+      
       link.addEventListener('click', (e) => {
         e.preventDefault();
-        const docName = link.querySelector('span')?.textContent?.trim();
-        if (!docName) return;
-        
-        const targetDoc = S.md.find(d => 
-          d.name.toLowerCase() === docName.toLowerCase() || 
-          d.name.replace(/\.[^.]+$/, '').toLowerCase() === docName.toLowerCase()
-        );
-        
         if (targetDoc) {
           import('./sidebar.js').then(({ Sidebar }) => {
             Sidebar.openDoc(targetDoc.id);
           });
         } else {
-          UI.toast('이동할 대상 문서를 찾을 수 없습니다: ' + docName, 'warn');
+          UI.toast(S.lang === 'ko' ? '이동할 대상 문서를 찾을 수 없습니다: ' + docName : 'Target document not found: ' + docName, 'warn');
         }
       });
     });
