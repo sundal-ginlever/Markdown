@@ -111,7 +111,7 @@ export const UI = {
       'doc-tb': mode === 'home' ? 'none' : 'flex',
       'wlc-a': mode === 'home' ? 'flex' : 'none',
       'view-a': mode === 'view' ? 'block' : 'none',
-      'edit-a': mode === 'edit' ? 'block' : 'none'
+      'edit-a': mode === 'edit' ? 'flex' : 'none' // flex so the textarea fills the area
     };
     for (const id in disp) {
       const el = document.getElementById(id);

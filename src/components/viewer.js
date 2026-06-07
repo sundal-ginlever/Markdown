@@ -18,8 +18,16 @@ export const Viewer = {
     const nav = document.getElementById('hl-nav');
     if (nav) nav.style.display = 'none';
 
-    el.innerHTML = parseMd(S.activeDoc.content);
-    
+    const content = S.activeDoc.content || '';
+    if (!content.trim()) {
+      const msg = S.lang === 'ko'
+        ? '이 문서는 내용이 비어 있습니다. (변환 결과가 비었거나 실패했을 수 있어요 — 재변환을 시도해 보세요.)'
+        : 'This document is empty. (Conversion may have returned nothing or failed — try Reconvert.)';
+      el.innerHTML = `<p style="color:var(--t3);font-size:13px;text-align:center;padding:40px 0">${msg}</p>`;
+    } else {
+      el.innerHTML = parseMd(content);
+    }
+
     // Bind Wikilinks clicking & Check dead links (Dynamic Resolver)
     el.querySelectorAll('.wiki-link').forEach(link => {
       const docName = link.getAttribute('data-target') || link.querySelector('span')?.textContent?.trim();

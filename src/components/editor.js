@@ -14,15 +14,19 @@ export const Editor = {
     S.mode = m;
     const isEdit = m === 'edit';
 
-    UI.setLayout(isEdit ? 'edit' : 'view');
+    if (isEdit) {
+      UI.setLayout('edit');
+      document.getElementById('mdt').value = S.activeDoc.content || '';
+    } else {
+      // Apply the view layout first (always closes edit), then re-render so the
+      // preview reflects current content instead of a stale/blank area
+      UI.setLayout('view');
+      try { Viewer.render(); } catch (err) { console.error('Render failed:', err); }
+    }
     document.getElementById('b-view')?.classList.toggle('act', !isEdit);
     document.getElementById('b-edit')?.classList.toggle('act', isEdit);
     const saveBtn = document.getElementById('b-save');
     if (saveBtn) saveBtn.style.display = isEdit ? 'block' : 'none';
-
-    if (isEdit) {
-      document.getElementById('mdt').value = S.activeDoc.content || '';
-    }
   },
 
   async save() {
@@ -38,10 +42,9 @@ export const Editor = {
     S.activeDoc.updatedAt = docToSave.updatedAt;
 
     // Return to preview right away so Save always visibly responds, even if a
-    // later (render or cloud) step fails. The textarea value is captured above.
+    // later (cloud) step fails. setMode('view') re-renders the preview.
     if (S.activeDoc && S.activeDoc.id === docToSave.id) {
       this.setMode('view');
-      try { Viewer.render(); } catch (err) { console.error('Render after save failed:', err); }
     }
 
     try {
