@@ -988,3 +988,85 @@ mark.md-mark { background: rgba(79, 70, 229,0.2); color: var(--t1); padding: 0 4
   border-color: var(--bdr);
 }
 
+/* --- Phase 2: Original ↔ converted split view --- */
+#view-a.split {
+  flex-direction: row;
+  overflow: hidden;
+}
+.src-pane {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--bdr);
+  background: var(--bg-panel);
+  display: flex;
+  flex-direction: column;
+}
+#view-a.split #mdv {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+}
+.src-h {
+  position: sticky;
+  top: 0;
+  padding: 8px 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--t3);
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--bdr);
+}
+#src-text {
+  flex: 1;
+  margin: 0;
+  padding: 16px 20px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--t2);
+}
+
+/* --- Phase 2: Reconvert style cards (modal) --- */
+#reconv-style-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.style-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px;
+  border: 1px solid var(--bdr);
+  border-radius: 10px;
+  background: var(--bg-surf);
+  cursor: pointer;
+  transition: var(--ease);
+  text-align: center;
+}
+.style-card:hover {
+  border-color: var(--acc);
+  background: var(--bg-hov);
+}
+.style-card.act {
+  border-color: var(--acc);
+  background: var(--acc-g);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, .12);
+}
+.style-card .sc-ico {
+  font-size: 20px;
+}
+.style-card .sc-tit {
+  font-family: var(--dsp);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--t1);
+}
+

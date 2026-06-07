@@ -467,6 +467,19 @@ function bindEvents() {
     qaInp.style.height = Math.min(120, qaInp.scrollHeight) + 'px';
   });
 
+  // Conversion-experience actions (Phase 2)
+  document.getElementById('b-source')?.addEventListener('click', () => Viewer.toggleSource());
+  document.getElementById('b-reconv')?.addEventListener('click', () => Viewer.openReconvModal());
+  document.getElementById('b-copy')?.addEventListener('click', async () => {
+    if (!S.activeDoc) return;
+    try {
+      await navigator.clipboard.writeText(S.activeDoc.content || '');
+      UI.toast(S.lang === 'ko' ? '마크다운이 복사되었습니다' : 'Markdown copied', 'ok');
+    } catch (e) {
+      UI.toast(S.lang === 'ko' ? '복사 실패 (권한 확인)' : 'Copy failed (check permissions)', 'err');
+    }
+  });
+
   // Additional Document Actions
   document.getElementById('b-export')?.addEventListener('click', () => Editor.export());
   document.getElementById('btn-export-all')?.addEventListener('click', () => Editor.exportAll());
@@ -504,99 +517,108 @@ function bindEvents() {
   });
 }
 
+// Extract raw text/data from a single file (text, PDF, DOCX, spreadsheet)
+async function extractFileData(file, signal) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (['xlsx', 'xls', 'ods'].includes(ext)) {
+    const d = await parseSheet(file, signal);
+    return { type: 'sheet', text: sheetsToText(d), cnt: d.names.length };
+  }
+  if (ext === 'pdf') return await extractPdf(file, UI.showPb, null, signal);
+  if (ext === 'docx') return await extractDocx(file, UI.showPb, null, signal);
+
+  const allowedTextExts = ['txt', 'md', 'csv', 'json', 'html', 'xml', 'js', 'css', 'py', 'java', 'c', 'cpp', 'rs', 'go', 'ts'];
+  if (!allowedTextExts.includes(ext)) {
+    throw new Error(S.lang === 'ko' ? `지원하지 않는 파일 형식입니다 (.${ext}). 텍스트 또는 문서(PDF, DOCX, XLSX) 파일만 업로드 가능합니다.` : `Unsupported file type (.${ext}). Only text or document (PDF, DOCX, XLSX) files are allowed.`);
+  }
+  return await new Promise((res, rej) => {
+    if (signal && signal.aborted) return rej(new Error('Cancelled'));
+    const onAbort = () => { cleanup(); rej(new Error('Cancelled')); };
+    const cleanup = () => { if (signal) signal.removeEventListener('abort', onAbort); };
+    if (signal) signal.addEventListener('abort', onAbort);
+    const r = new FileReader();
+    r.onload = e => { cleanup(); res({ type: 'text', text: e.target.result, cnt: 0 }); };
+    r.onerror = err => { cleanup(); rej(err); };
+    r.readAsText(file, 'UTF-8');
+  });
+}
+
 async function processFile() {
-  if (!S.pendingFile) return;
-  const file = S.pendingFile;
-  UI.showPb('파일 분석 중...');
-  
+  const files = (S.pendingFiles && S.pendingFiles.length)
+    ? Array.from(S.pendingFiles)
+    : (S.pendingFile ? [S.pendingFile] : []);
+  if (!files.length) return;
+  const isKo = S.lang === 'ko';
+
   // Safe dynamic import to get the isolated UploadModal controller
   const { UploadModal } = await import('./components/modals/uploadModal.js');
   if (UploadModal.abortController) UploadModal.abortController.abort();
   UploadModal.abortController = new AbortController();
   const signal = UploadModal.abortController.signal;
 
+  const styleDef = STYLES.find(s => s.id === S.selectedStyle) || STYLES[0];
+  const multi = files.length > 1;
+  let lastDocId = null;
+  let okCount = 0;
+  const failed = [];
+
   try {
-    const ext = file.name.split('.').pop().toLowerCase();
-    let fd;
-    if (['xlsx', 'xls', 'ods'].includes(ext)) {
-      const d = await parseSheet(file, signal);
-      fd = { type: 'sheet', text: sheetsToText(d), cnt: d.names.length };
-    } else if (ext === 'pdf') {
-      fd = await extractPdf(file, UI.showPb, null, signal);
-    } else if (ext === 'docx') {
-      fd = await extractDocx(file, UI.showPb, null, signal);
-    } else {
-      const allowedTextExts = ['txt', 'md', 'csv', 'json', 'html', 'xml', 'js', 'css', 'py', 'java', 'c', 'cpp', 'rs', 'go', 'ts'];
-      if (!allowedTextExts.includes(ext)) {
-        throw new Error(S.lang === 'ko' ? `지원하지 않는 파일 형식입니다 (.${ext}). 텍스트 또는 문서(PDF, DOCX, XLSX) 파일만 업로드 가능합니다.` : `Unsupported file type (.${ext}). Only text or document (PDF, DOCX, XLSX) files are allowed.`);
-      }
-      fd = await new Promise((res, rej) => {
-        if (signal && signal.aborted) return rej(new Error('Cancelled'));
-        
-        const onAbort = () => {
-          cleanup();
-          rej(new Error('Cancelled'));
-        };
+    for (let i = 0; i < files.length; i++) {
+      if (signal.aborted) throw new Error('Cancelled');
+      const file = files[i];
+      const prefix = multi ? `(${i + 1}/${files.length}) ` : '';
 
-        const cleanup = () => {
-          if (signal) {
-            signal.removeEventListener('abort', onAbort);
-          }
-        };
+      try {
+        UI.showPb(`${prefix}${isKo ? '파일 분석 중' : 'Analyzing'}: ${file.name}`);
+        const fd = await extractFileData(file, signal);
 
-        if (signal) {
-          signal.addEventListener('abort', onAbort);
+        if (fd.text && fd.text.length > 30000) {
+          UI.toast((isKo ? `${file.name}: 문서가 너무 길어 일부만 전송됩니다.` : `${file.name}: too long, only a portion processed.`), 'warn');
         }
 
-        const r = new FileReader();
-        r.onload = e => {
-          cleanup();
-          res({ type: 'text', text: e.target.result, cnt: 0 });
+        UI.showPb(`${prefix}${isKo ? 'AI 변환 중...' : 'Converting...'}`);
+        const mdc = await aiConvert(file.name, fd, null, styleDef, signal);
+
+        const docId = 'md_' + Date.now().toString() + '_' + i;
+        const ext = file.name.split('.').pop().toLowerCase();
+        const doc = {
+          id: docId,
+          name: file.name.replace(/\.[^.]+$/, '') + '.md',
+          rawId: docId,
+          content: mdc,
+          styleId: S.selectedStyle,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          version: 1
         };
-        r.onerror = err => {
-          cleanup();
-          rej(err);
-        };
-        r.readAsText(file, 'UTF-8');
-      });
+
+        await IDB.saveDoc(doc, fd.text, null, file.name, fd.type);
+        await SB.saveDoc(doc, { name: file.name, ext, content: fd.text });
+
+        if (!S.raw) S.raw = [];
+        S.raw.unshift({ id: doc.id, name: file.name, type: fd.type });
+        S.md.unshift(doc);
+        lastDocId = docId;
+        okCount++;
+        Sidebar.render();
+      } catch (err) {
+        if (err.name === 'AbortError' || err.message === 'Cancelled') throw err;
+        console.error(`Failed to convert ${file.name}:`, err);
+        failed.push(file.name);
+      }
     }
 
-    const styleDef = STYLES.find(s => s.id === S.selectedStyle) || STYLES[0];
-    if (fd.text && fd.text.length > 30000) {
-      UI.toast(S.lang === 'ko' ? '문서가 너무 길어 일부만 전송됩니다.' : 'Document is too long, only a portion will be processed.', 'warn');
-    }
-    UI.showPb('AI 변환 중...');
-    const mdc = await aiConvert(file.name, fd, null, styleDef, signal);
-    
-    const id = Date.now().toString();
-    const docId = 'md_' + id;
-    const doc = {
-      id: docId,
-      name: file.name.replace(/\.[^.]+$/, '') + '.md',
-      rawId: docId,
-      content: mdc,
-      styleId: S.selectedStyle,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      version: 1
-    };
-
-    await IDB.saveDoc(doc, fd.text, null, file.name, fd.type);
-    await SB.saveDoc(doc, { name: file.name, ext, content: fd.text });
-    
-    // Update local state
-    const rawFile = { id: doc.id, name: file.name, type: fd.type };
-    if (!S.raw) S.raw = [];
-    S.raw.unshift(rawFile);
-    S.md.unshift(doc);
-
-    Sidebar.render();
-    UI.toast('변환 완료!', 'ok');
     UI.hidePb();
     UploadModal.close();
 
+    if (okCount > 0) {
+      UI.toast(multi ? `${okCount}${isKo ? '개 문서 변환 완료!' : ' documents converted!'}` : (isKo ? '변환 완료!' : 'Converted!'), 'ok');
+    }
+    if (failed.length) {
+      UI.toast((isKo ? '변환 실패: ' : 'Failed: ') + failed.join(', '), 'err');
+    }
     // Open the freshly converted document so the result is visible immediately
-    Sidebar.openDoc(docId);
+    if (lastDocId) Sidebar.openDoc(lastDocId);
   } catch (e) {
     if (e.name === 'AbortError' || e.message === 'Cancelled') {
       console.log('File processing was gracefully cancelled by user.');
@@ -605,6 +627,7 @@ async function processFile() {
       UI.toast('오류: ' + e.message, 'err');
     }
     UI.hidePb();
+    if (okCount > 0) Sidebar.render();
   }
 }
 

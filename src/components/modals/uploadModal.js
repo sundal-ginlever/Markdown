@@ -96,10 +96,14 @@ export const UploadModal = {
   },
 
   handleFileSelect(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    S.pendingFile = file;
-    const label = `📄 ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    S.pendingFiles = files;
+    S.pendingFile = files[0];
+    const isKo = S.lang === 'ko';
+    const label = files.length === 1
+      ? `📄 ${files[0].name} (${(files[0].size / 1024).toFixed(1)} KB)`
+      : (isKo ? `📄 ${files.length}개 파일 선택됨` : `📄 ${files.length} files selected`);
 
     const info = document.getElementById('sel-f');
     if (info) info.textContent = label;
@@ -119,6 +123,7 @@ export const UploadModal = {
   close() {
     UI.toggleModal('up-mo', false);
     S.pendingFile = null;
+    S.pendingFiles = null;
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;

@@ -12,6 +12,14 @@ export const Editor = {
   setMode(m) {
     S.mode = m;
     const isEdit = m === 'edit';
+
+    // Exit original-source comparison on any explicit tab switch
+    const srcPane = document.getElementById('src-pane');
+    if (srcPane && srcPane.style.display !== 'none') {
+      srcPane.style.display = 'none';
+      document.getElementById('view-a')?.classList.remove('split');
+      document.getElementById('b-source')?.classList.remove('on');
+    }
     document.getElementById('view-a').style.display = isEdit ? 'none' : 'block';
     document.getElementById('edit-a').style.display = isEdit ? 'block' : 'none';
     document.getElementById('b-view').classList.toggle('act', !isEdit);

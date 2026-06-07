@@ -128,6 +128,9 @@
         <button class="tb" id="b-view" data-i18n="tab_preview">👁 미리보기</button>
         <button class="tb" id="b-edit" data-i18n="tab_edit">✏️ 편집</button>
         <button class="tb grn" id="b-save" style="display:none" data-i18n="tab_save">💾 저장</button>
+        <button class="tb" id="b-source" title="원본과 나란히 비교" data-i18n="tab_source">📄 원본</button>
+        <button class="tb" id="b-reconv" title="다른 스타일로 재변환" data-i18n="tab_reconv">🔄 재변환</button>
+        <button class="tb" id="b-copy" title="마크다운 복사" data-i18n="tab_copy">📋 복사</button>
         <button class="tb" id="b-export" title="내보내기" data-i18n="export_btn">내보내기</button>
         <button class="tb" id="b-qa" title="AI에게 질문" data-i18n="qa_btn">질의응답</button>
         <button class="tb" id="b-log" data-i18n="tab_log">📋 로그</button>
@@ -189,7 +192,13 @@
         </div>
       </div>
     </div>
-    <div class="da" id="view-a" style="display:none"><div class="mdv" id="mdv"></div></div>
+    <div class="da" id="view-a" style="display:none">
+      <div class="src-pane" id="src-pane" style="display:none">
+        <div class="src-h"><span data-i18n="src_title">📄 원본</span></div>
+        <pre id="src-text"></pre>
+      </div>
+      <div class="mdv" id="mdv"></div>
+    </div>
     <div class="da" id="edit-a" style="display:none">
       <div class="edw"><textarea id="mdt" spellcheck="false"></textarea></div>
     </div>
@@ -290,6 +299,6 @@
 </div>
 
 <div id="toasts"></div>
-<input type="file" id="fi" style="display:none" accept=".txt,.md,.pdf,.docx,.csv,.json,.xlsx,.xls,.ods">
+<input type="file" id="fi" style="display:none" multiple accept=".txt,.md,.pdf,.docx,.csv,.json,.xlsx,.xls,.ods">
 </body>
 </html>

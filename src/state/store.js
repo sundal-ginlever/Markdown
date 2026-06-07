@@ -49,6 +49,7 @@ export const S = makeReactive({
   mode: 'view',
   logOpen: false,
   pendingFile: null,
+  pendingFiles: null,
   rtStatus: 'disconnected', // 'connected' | 'disconnected' | 'connecting'
   selectedStyle: localStorage.getItem('dv_style') || 'dev',
   secOpen: { raw: true, md: true },

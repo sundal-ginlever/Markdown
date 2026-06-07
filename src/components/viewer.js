@@ -99,7 +99,13 @@ export const Viewer = {
     document.getElementById('doc-tb').style.display = 'flex';
     document.getElementById('wlc-a').style.display = 'none';
     document.getElementById('view-a').style.display = 'block';
-    
+
+    // Reset original-source split when (re)rendering a document
+    const srcPane = document.getElementById('src-pane');
+    if (srcPane) srcPane.style.display = 'none';
+    document.getElementById('view-a')?.classList.remove('split');
+    document.getElementById('b-source')?.classList.remove('on');
+
     this.renderFavBtn();
 
     const badge = document.getElementById('doc-style-badge');
@@ -111,6 +117,48 @@ export const Viewer = {
         badge.onclick = () => this.openReconvModal();
       });
     }
+  },
+
+  async toggleSource() {
+    const pane = document.getElementById('src-pane');
+    const view = document.getElementById('view-a');
+    const btn = document.getElementById('b-source');
+    if (!pane || !view || !S.activeDoc) return;
+
+    // Always show preview (not edit) when comparing
+    if (S.mode === 'edit') {
+      const { Editor } = await import('./editor.js');
+      Editor.setMode('view');
+    }
+
+    const showing = pane.style.display !== 'none';
+    if (showing) {
+      pane.style.display = 'none';
+      view.classList.remove('split');
+      view.style.display = 'block';
+      btn?.classList.remove('on');
+      return;
+    }
+
+    const { IDB } = await import('../services/db.js');
+    let text = S.lang === 'ko' ? '(원본 데이터를 찾을 수 없습니다)' : '(Original source not found)';
+    try {
+      const raw = await IDB.get('raw', S.activeDoc.rawId);
+      if (raw && raw.data != null) {
+        if (typeof raw.data === 'string') text = raw.data;
+        else if (raw.data instanceof ArrayBuffer) {
+          try { text = new TextDecoder('utf-8').decode(raw.data); } catch { /* keep fallback */ }
+        } else text = String(raw.data);
+      }
+    } catch (e) {
+      console.warn('Failed to load original source:', e);
+    }
+
+    document.getElementById('src-text').textContent = text;
+    pane.style.display = 'flex';
+    view.classList.add('split');
+    view.style.display = 'flex';
+    btn?.classList.add('on');
   },
 
   renderFavBtn() {
