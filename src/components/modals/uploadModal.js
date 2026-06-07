@@ -66,25 +66,22 @@ export const UploadModal = {
       }
     });
 
-    // Event Delegation: 스타일 그리드 단일 리스너 바인딩
-    const grid = document.getElementById('style-grid');
-    grid?.addEventListener('click', (e) => {
+    // Event Delegation: 모달/홈 화면 스타일 그리드 공통 리스너 바인딩
+    const onStylePick = (e) => {
       const card = e.target.closest('.sc');
       if (!card) return;
-      
-      const id = card.dataset.id;
-      S.selectedStyle = id;
-      localStorage.setItem('dv_style', id);
+      S.selectedStyle = card.dataset.id;
+      localStorage.setItem('dv_style', card.dataset.id);
       this.renderStyles();
-    });
+    };
+    document.getElementById('style-grid')?.addEventListener('click', onStylePick);
+    document.getElementById('wlc-style-grid')?.addEventListener('click', onStylePick);
 
     this.renderStyles();
   },
 
   renderStyles() {
-    const grid = document.getElementById('style-grid');
-    if (!grid) return;
-    grid.innerHTML = STYLES.map(st => `
+    const html = STYLES.map(st => `
       <div class="sc ${st.cls} ${S.selectedStyle === st.id ? 'sel' : ''}" data-id="${st.id}">
         <span class="sc-ico">${st.icon}</span>
         <span class="sc-info">
@@ -92,20 +89,31 @@ export const UploadModal = {
           <span class="sc-desc">${st.desc}</span>
         </span>
       </div>`).join('');
+    ['style-grid', 'wlc-style-grid'].forEach(id => {
+      const grid = document.getElementById(id);
+      if (grid) grid.innerHTML = html;
+    });
   },
 
   handleFileSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
     S.pendingFile = file;
+    const label = `📄 ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+
     const info = document.getElementById('sel-f');
-    if (info) info.textContent = `📄 ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
-    
+    if (info) info.textContent = label;
     const btn = document.getElementById('b-proc');
     if (btn) {
       btn.disabled = false;
       btn.style.opacity = '1';
     }
+
+    // Mirror the selection onto the home (welcome) converter
+    const wlcInfo = document.getElementById('wlc-sel-f');
+    if (wlcInfo) wlcInfo.textContent = label;
+    const wlcAction = document.getElementById('wlc-action');
+    if (wlcAction) wlcAction.style.display = 'flex';
   },
 
   close() {
@@ -121,5 +129,11 @@ export const UploadModal = {
     if (btn) btn.disabled = true;
     const fi = document.getElementById('fi');
     if (fi) fi.value = '';
+
+    // Reset the home converter indicator too
+    const wlcInfo = document.getElementById('wlc-sel-f');
+    if (wlcInfo) wlcInfo.textContent = '';
+    const wlcAction = document.getElementById('wlc-action');
+    if (wlcAction) wlcAction.style.display = 'none';
   }
 };

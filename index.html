@@ -28,34 +28,40 @@
       <option value="gemini">Gemini (Google)</option>
       <option value="local">Local / Custom</option>
     </select>
-    <button class="key-btn" id="key-btn" data-i18n-title="api_key_btn" data-i18n-aria="aria_keys">🔑 <span class="key-lbl" data-i18n="api_key_btn">API 키</span></button>
   </div>
 
   <div class="tb-sep"></div>
 
-  <button class="cloud-btn" id="cloud-setup-btn" title="Supabase 클라우드 연결" data-i18n-aria="aria_sync">
-    ☁️ <span id="cloud-btn-lbl" data-i18n="sync_btn">클라우드</span>
-  </button>
-
-  <div class="lang-wrap">
-    <button class="lang-btn" data-lang="ko" data-i18n-aria="aria_ko">KO</button>
-    <button class="lang-btn" data-lang="en" data-i18n-aria="aria_en">EN</button>
-  </div>
-
-  <div class="tb-user">
-    <div class="sync-dot off" id="sync-dot"></div>
-    <span class="sync-lbl" id="sync-lbl"></span>
-    <div class="user-avatar cloud-only" id="user-avatar" title="계정 메뉴" data-i18n-aria="aria_user">?</div>
-  </div>
-
-  <div class="rt-badge" id="rt-badge" title="실시간 동기화 활성" data-i18n-aria="aria_live">
-    <div class="rt-pulse"></div>
-    <span>LIVE</span>
-  </div>
-
   <div class="tb-stat"><div class="sdot" id="sdot"></div><span id="stxt" data-i18n="status_ready">준비 완료</span></div>
 
   <button class="btn-up" id="btn-up" data-i18n-aria="aria_upload">⊕ <span data-i18n="upload_btn">문서 변환</span></button>
+
+  <div class="tb-settings-wrap">
+    <button class="tb-gear" id="tb-gear-btn" title="설정" aria-label="설정">⚙️</button>
+    <div class="tb-menu" id="tb-menu">
+      <button class="key-btn" id="key-btn" data-i18n-title="api_key_btn" data-i18n-aria="aria_keys">🔑 <span class="key-lbl" data-i18n="api_key_btn">API 키</span></button>
+      <button class="cloud-btn" id="cloud-setup-btn" title="Supabase 클라우드 연결" data-i18n-aria="aria_sync">
+        ☁️ <span id="cloud-btn-lbl" data-i18n="sync_btn">클라우드</span>
+      </button>
+      <div class="tb-menu-divider"></div>
+      <div class="tb-menu-row">
+        <span class="tb-menu-lbl">Language</span>
+        <div class="lang-wrap">
+          <button class="lang-btn" data-lang="ko" data-i18n-aria="aria_ko">KO</button>
+          <button class="lang-btn" data-lang="en" data-i18n-aria="aria_en">EN</button>
+        </div>
+      </div>
+      <div class="tb-menu-row tb-user">
+        <div class="sync-dot off" id="sync-dot"></div>
+        <span class="sync-lbl" id="sync-lbl"></span>
+        <div class="user-avatar cloud-only" id="user-avatar" title="계정 메뉴" data-i18n-aria="aria_user">?</div>
+        <div class="rt-badge" id="rt-badge" title="실시간 동기화 활성" data-i18n-aria="aria_live">
+          <div class="rt-pulse"></div>
+          <span>LIVE</span>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="ws">
@@ -172,6 +178,14 @@
           <div class="dz-ico">⬆️</div>
           <div class="dz-txt" data-i18n="dz_txt">변환할 파일을 여기에 드롭하세요</div>
           <div class="dz-sub" data-i18n="dz_sub">PDF, Word, TXT, CSV 등을 지원합니다</div>
+        </div>
+        <div class="wlc-styles">
+          <div class="sp-ttl" data-i18n="mo_style_ttl">변환 스타일</div>
+          <div class="style-grid" id="wlc-style-grid"></div>
+        </div>
+        <div class="wlc-action" id="wlc-action" style="display:none">
+          <span class="wlc-sel-f" id="wlc-sel-f"></span>
+          <button class="btn-up" id="wlc-convert" data-i18n-aria="aria_upload">⚡ <span data-i18n="upload_btn">문서 변환</span></button>
         </div>
       </div>
     </div>

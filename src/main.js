@@ -197,7 +197,28 @@ function bindEvents() {
     }, 100);
   });
   document.getElementById('btn-up')?.addEventListener('click', () => UI.toggleModal('up-mo', true));
-  
+
+  // Settings (⚙️) dropdown menu in the titlebar
+  const tbMenu = document.getElementById('tb-menu');
+  document.getElementById('tb-gear-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    tbMenu?.classList.toggle('show');
+  });
+  // Close the menu after picking any action inside it
+  tbMenu?.addEventListener('click', (e) => {
+    if (e.target.closest('button')) tbMenu.classList.remove('show');
+  });
+  // Close on outside click
+  document.addEventListener('click', (e) => {
+    if (tbMenu?.classList.contains('show') && !e.target.closest('.tb-settings-wrap')) {
+      tbMenu.classList.remove('show');
+    }
+  });
+
+  // Home (welcome) converter: click drop zone to pick a file, then convert inline
+  document.getElementById('main-dz')?.addEventListener('click', () => document.getElementById('fi')?.click());
+  document.getElementById('wlc-convert')?.addEventListener('click', processFile);
+
   // Backdrop clicks to close modals
   document.querySelectorAll('.ov').forEach(ov => {
     ov.addEventListener('click', (e) => {
@@ -573,6 +594,9 @@ async function processFile() {
     UI.toast('변환 완료!', 'ok');
     UI.hidePb();
     UploadModal.close();
+
+    // Open the freshly converted document so the result is visible immediately
+    Sidebar.openDoc(docId);
   } catch (e) {
     if (e.name === 'AbortError' || e.message === 'Cancelled') {
       console.log('File processing was gracefully cancelled by user.');

@@ -663,7 +663,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  min-height: 100%;
   padding: 40px;
   text-align: center;
   position: relative;
@@ -800,5 +800,120 @@ mark.md-mark { background: rgba(194,65,12,0.2); color: var(--t1); padding: 0 4px
   font-family: var(--mono);
   font-weight: 600;
   color: var(--acc);
+}
+
+/* --- Phase 1: Titlebar settings (⚙️) dropdown --- */
+.tb-settings-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.tb-gear {
+  background: transparent;
+  border: 1px solid var(--bdr);
+  color: var(--t2);
+  width: 30px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--ease);
+}
+.tb-gear:hover {
+  background: var(--bg-hov);
+  color: var(--t1);
+}
+.tb-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--bg-surf);
+  border: 1px solid var(--bdr);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  padding: 8px;
+  min-width: 210px;
+  z-index: 60;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  animation: mIn .14s ease;
+}
+.tb-menu.show {
+  display: flex;
+}
+.tb-menu .key-btn,
+.tb-menu .cloud-btn {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.tb-menu-divider {
+  height: 1px;
+  background: var(--bdr);
+  margin: 2px 0;
+}
+.tb-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+}
+.tb-menu-lbl {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.tb-menu .tb-user {
+  flex-wrap: wrap;
+}
+
+/* --- Phase 1: Home (welcome) inline converter --- */
+.wlc-styles {
+  width: 100%;
+  max-width: 560px;
+  margin-top: 28px;
+  z-index: 1;
+  text-align: left;
+}
+.wlc-styles .sp-ttl {
+  margin-bottom: 10px;
+}
+.wlc-styles .style-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+.wlc-action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 24px;
+  z-index: 1;
+}
+.wlc-sel-f {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--acc);
+  font-weight: 600;
+}
+.wlc-action .btn-up {
+  font-size: 12px;
+  padding: 9px 20px;
+}
+
+@media (max-width: 640px) {
+  .wlc-styles .style-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
