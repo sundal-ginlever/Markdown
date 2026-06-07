@@ -16,7 +16,7 @@ export async function aiConvert(fname, fd, textOverride, styleDef, signal) {
       headers: h,
       signal: signal,
       body: JSON.stringify({
-        model: S.ai.models.claude || 'claude-3-5-sonnet-20240620',
+        model: S.ai.models.claude || 'claude-opus-4-8',
         max_tokens: 4096,
         messages: [{ role: 'user', content: prompt }]
       })

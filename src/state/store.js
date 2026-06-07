@@ -62,9 +62,9 @@ export const S = makeReactive({
     provider: 'claude',
     keys: { claude: '', gpt4: '', gemini: '', local: '' },
     models: {
-      claude: 'claude-3-5-sonnet-20240620',
+      claude: 'claude-opus-4-8',
       gpt4: 'gpt-4o',
-      gemini: 'gemini-1.5-pro',
+      gemini: 'gemini-2.0-flash',
       local: ''
     },
     localUrl: ''

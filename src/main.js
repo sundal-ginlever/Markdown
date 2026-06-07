@@ -88,6 +88,12 @@ async function init() {
     }
   }
 
+  // Migrate stale/retired Claude model IDs saved by older versions (would 404)
+  const CURRENT_CLAUDE_MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
+  if (!CURRENT_CLAUDE_MODELS.includes(S.ai.models.claude)) {
+    S.ai.models.claude = 'claude-opus-4-8';
+  }
+
   // Initialize Services
   const sbClient = await SB.init();
   if (sbClient && SB.user) {

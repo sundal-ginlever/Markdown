@@ -95,31 +95,32 @@ export const SettingsModal = {
       html = `
         <div class="fr"><label class="fl-lbl">ANTHROPIC API KEY</label><input type="password" class="fi-inp" id="k-claude" value="${this.tempAi.keys.claude || ''}"></div>
         <div class="fr"><label class="fl-lbl">MODEL</label><select class="fi-inp" id="m-claude">
-          <option value="claude-3-5-sonnet-20240620" ${this.tempAi.models.claude === 'claude-3-5-sonnet-20240620' ? 'selected' : ''}>Claude 3.5 Sonnet</option>
-          <option value="claude-3-opus-20240229" ${this.tempAi.models.claude === 'claude-3-opus-20240229' ? 'selected' : ''}>Claude 3 Opus</option>
+          <option value="claude-opus-4-8" ${this.tempAi.models.claude === 'claude-opus-4-8' ? 'selected' : ''}>Claude Opus 4.8 — 최고 성능</option>
+          <option value="claude-sonnet-4-6" ${this.tempAi.models.claude === 'claude-sonnet-4-6' ? 'selected' : ''}>Claude Sonnet 4.6 — 균형</option>
+          <option value="claude-haiku-4-5" ${this.tempAi.models.claude === 'claude-haiku-4-5' ? 'selected' : ''}>Claude Haiku 4.5 — 빠르고 저렴</option>
         </select></div>
       `;
     } else if (p === 'gpt4') {
       html = `
         <div class="fr"><label class="fl-lbl">OPENAI API KEY</label><input type="password" class="fi-inp" id="k-gpt4" value="${this.tempAi.keys.gpt4 || ''}"></div>
-        <div class="fr"><label class="fl-lbl">MODEL</label><select class="fi-inp" id="m-gpt4">
-          <option value="gpt-4o" ${this.tempAi.models.gpt4 === 'gpt-4o' ? 'selected' : ''}>GPT-4o</option>
-          <option value="gpt-4-turbo" ${this.tempAi.models.gpt4 === 'gpt-4-turbo' ? 'selected' : ''}>GPT-4 Turbo</option>
-          <option value="gpt-3.5-turbo" ${this.tempAi.models.gpt4 === 'gpt-3.5-turbo' ? 'selected' : ''}>GPT-3.5 Turbo</option>
-        </select></div>
+        <div class="fr"><label class="fl-lbl">MODEL (SELECT OR TYPE)</label>
+          <input type="text" class="fi-inp" id="m-gpt4" list="gpt-models" value="${this.tempAi.models.gpt4 || 'gpt-4o'}" placeholder="e.g. gpt-4o">
+          <datalist id="gpt-models">
+            <option value="gpt-4o">GPT-4o</option>
+            <option value="gpt-4o-mini">GPT-4o mini (빠르고 저렴)</option>
+            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+          </datalist>
+        </div>
       `;
     } else if (p === 'gemini') {
       html = `
         <div class="fr"><label class="fl-lbl">GOOGLE AI API KEY (GEMINI)</label><input type="password" class="fi-inp" id="k-gemini" value="${this.tempAi.keys.gemini || ''}"></div>
         <div class="fr"><label class="fl-lbl">MODEL (SELECT OR TYPE)</label>
-          <input type="text" class="fi-inp" id="m-gemini" list="gemini-models" value="${this.tempAi.models.gemini || 'gemini-1.5-pro'}" placeholder="e.g. gemini-1.5-pro">
+          <input type="text" class="fi-inp" id="m-gemini" list="gemini-models" value="${this.tempAi.models.gemini || 'gemini-2.0-flash'}" placeholder="e.g. gemini-2.0-flash">
           <datalist id="gemini-models">
-            <option value="gemini-1.5-pro">Gemini 1.5 Pro (Stable)</option>
-            <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro (Latest)</option>
-            <option value="gemini-1.5-pro-002">Gemini 1.5 Pro 002 (Newest)</option>
-            <option value="gemini-1.5-flash">Gemini 1.5 Flash (Fast)</option>
-            <option value="gemini-1.5-flash-002">Gemini 1.5 Flash 002</option>
-            <option value="gemini-pro">Gemini 1.0 Pro</option>
+            <option value="gemini-2.0-flash">Gemini 2.0 Flash (빠름)</option>
+            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
           </datalist>
         </div>
       `;
