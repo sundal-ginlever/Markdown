@@ -100,6 +100,15 @@ export const Viewer = {
     document.getElementById('wlc-a').style.display = 'none';
     document.getElementById('view-a').style.display = 'block';
 
+    // Always land in a clean preview state (hide any leftover edit area/save btn)
+    S.mode = 'view';
+    const editA = document.getElementById('edit-a');
+    if (editA) editA.style.display = 'none';
+    const saveBtn = document.getElementById('b-save');
+    if (saveBtn) saveBtn.style.display = 'none';
+    document.getElementById('b-edit')?.classList.remove('act');
+    document.getElementById('b-view')?.classList.add('act');
+
     // Reset original-source split when (re)rendering a document
     const srcPane = document.getElementById('src-pane');
     if (srcPane) srcPane.style.display = 'none';

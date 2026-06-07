@@ -38,27 +38,32 @@ export const Editor = {
     const delta = content.length - (docToSave.content?.length || 0);
     docToSave.content = content;
     docToSave.updatedAt = new Date();
-    
+
     // Immediately update reactive state for current doc
     S.activeDoc.content = content;
     S.activeDoc.updatedAt = docToSave.updatedAt;
-    
-    await IDB.put('docs', docToSave);
-    const logEntry = { docId: docToSave.id, ts: Date.now(), msg: '문서 내용 직접 편집', delta };
-    await IDB.put('logs', logEntry);
-    await SB.saveLog(docToSave.id, logEntry);
-    await SB.saveDoc(docToSave);
-    
-    // Only update UI if the active document is still the same one
+
+    // Return to preview right away so Save always visibly responds, even if a
+    // later (cloud) step fails. The textarea value is already captured above.
     if (S.activeDoc && S.activeDoc.id === docToSave.id) {
       Viewer.render();
+      this.setMode('view');
+    }
+
+    try {
+      await IDB.put('docs', docToSave);
+      const logEntry = { docId: docToSave.id, ts: Date.now(), msg: '문서 내용 직접 편집', delta };
+      await IDB.put('logs', logEntry);
+      await SB.saveLog(docToSave.id, logEntry);
+      await SB.saveDoc(docToSave);
       if (S.logOpen) {
         import('./logPanel.js').then(({ LogPanel }) => LogPanel.render());
       }
-      this.setMode('view');
+      UI.toast(S.lang === 'ko' ? '저장되었습니다!' : 'Saved!', 'ok');
+    } catch (e) {
+      console.error('Save failed:', e);
+      UI.toast((S.lang === 'ko' ? '저장 오류: ' : 'Save error: ') + e.message, 'err');
     }
-    
-    UI.toast('저장되었습니다!', 'ok');
   },
 
   export() {

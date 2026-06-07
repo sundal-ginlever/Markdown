@@ -85,6 +85,16 @@ export const SettingsModal = {
     }
   },
 
+  // Build <option>s; preserve a saved value that isn't in the known list
+  _opts(list, cur) {
+    const known = list.map(o => o[0]);
+    let html = list.map(o => `<option value="${o[0]}" ${cur === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('');
+    if (cur && !known.includes(cur)) {
+      html = `<option value="${cur}" selected>${cur} (사용자 지정)</option>` + html;
+    }
+    return html;
+  },
+
   renderForm(p) {
     const container = document.getElementById('kf-claude'); // We use this as the base container
     if (!container || !this.tempAi) return;
@@ -101,28 +111,24 @@ export const SettingsModal = {
         </select></div>
       `;
     } else if (p === 'gpt4') {
+      const m = this.tempAi.models.gpt4 || 'gpt-5.4-mini';
       html = `
         <div class="fr"><label class="fl-lbl">OPENAI API KEY</label><input type="password" class="fi-inp" id="k-gpt4" value="${this.tempAi.keys.gpt4 || ''}"></div>
-        <div class="fr"><label class="fl-lbl">MODEL (SELECT OR TYPE)</label>
-          <input type="text" class="fi-inp" id="m-gpt4" list="gpt-models" value="${this.tempAi.models.gpt4 || 'gpt-5.4-mini'}" placeholder="e.g. gpt-5.4-mini">
-          <datalist id="gpt-models">
-            <option value="gpt-5.4-mini">GPT-5.4 mini — 빠르고 저렴 (권장)</option>
-            <option value="gpt-5.4-nano">GPT-5.4 nano — 초저가</option>
-            <option value="gpt-5.5">GPT-5.5 — 최고 성능</option>
-          </datalist>
-        </div>
+        <div class="fr"><label class="fl-lbl">MODEL</label><select class="fi-inp" id="m-gpt4">${this._opts([
+          ['gpt-5.4-mini', 'GPT-5.4 mini — 빠르고 저렴 (권장)'],
+          ['gpt-5.4-nano', 'GPT-5.4 nano — 초저가'],
+          ['gpt-5.5', 'GPT-5.5 — 최고 성능']
+        ], m)}</select></div>
       `;
     } else if (p === 'gemini') {
+      const m = this.tempAi.models.gemini || 'gemini-3.5-flash';
       html = `
         <div class="fr"><label class="fl-lbl">GOOGLE AI API KEY (GEMINI)</label><input type="password" class="fi-inp" id="k-gemini" value="${this.tempAi.keys.gemini || ''}"></div>
-        <div class="fr"><label class="fl-lbl">MODEL (SELECT OR TYPE)</label>
-          <input type="text" class="fi-inp" id="m-gemini" list="gemini-models" value="${this.tempAi.models.gemini || 'gemini-3.5-flash'}" placeholder="e.g. gemini-3.5-flash">
-          <datalist id="gemini-models">
-            <option value="gemini-3.5-flash">Gemini 3.5 Flash — 권장</option>
-            <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite — 초저가</option>
-            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-          </datalist>
-        </div>
+        <div class="fr"><label class="fl-lbl">MODEL</label><select class="fi-inp" id="m-gemini">${this._opts([
+          ['gemini-3.5-flash', 'Gemini 3.5 Flash — 권장'],
+          ['gemini-3.1-flash-lite', 'Gemini 3.1 Flash-Lite — 초저가'],
+          ['gemini-2.5-flash', 'Gemini 2.5 Flash']
+        ], m)}</select></div>
       `;
     } else if (p === 'local') {
       html = `
