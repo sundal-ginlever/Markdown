@@ -31,7 +31,7 @@
   height: 7px;
   border-radius: 50%;
   background: var(--acc);
-  box-shadow: 0 0 6px rgba(194, 65, 12, .5);
+  box-shadow: 0 0 6px rgba(79, 70, 229, .5);
 }
 
 .tb-logo .ver {

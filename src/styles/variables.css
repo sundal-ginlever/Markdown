@@ -1,45 +1,42 @@
 :root {
-  /* ── Warm Cream Palette ─────────────────────────
-     Base:   #FFF9E3  warm parchment
-     Panel:  #FEF3C4  soft amber tint
-     Surf:   #FFFDF0  near-white warm
-     Hover:  #FEF08A  gentle yellow hover
-     Active: #FDE68A  warm amber active
-     Border: #E8D99A  warm sand border
-     Border-light: #F0E4B0
-  ── Accent & Semantic ──────────────────────────── */
-  --bg-base: #FFF9E3;
-  --bg-panel: #FEF3C4;
-  --bg-surf: #FFFDF5;
-  --bg-hov: #FEF9D3;
-  --bg-act: #FDEEA0;
-  --bdr: #E2D08A;
-  --bdr-l: #EBD99C;
+  /* ── Light Minimal Palette ──────────────────────
+     Clean white surfaces, neutral grays, one indigo accent.
+     (Notion / Linear inspired)
+  ── Surfaces & Borders ─────────────────────────── */
+  --bg-base: #ffffff;   /* app background */
+  --bg-panel: #f7f7f8;  /* sidebar / titlebar */
+  --bg-surf: #ffffff;   /* cards / surfaces */
+  --bg-hov: #f1f1f3;    /* hover */
+  --bg-act: #ebebef;    /* active row */
+  --bdr: #e6e6e9;       /* borders */
+  --bdr-l: #f0f0f2;     /* light border */
 
-  --acc: #C2410C;       /* burnt orange — primary accent */
-  --acc-d: #FED7AA;     /* light peach — accent tint */
-  --acc-g: rgba(194, 65, 12, .08);
+  /* ── Accent & Semantic ──────────────────────────── */
+  --acc: #4f46e5;       /* indigo — primary accent */
+  --acc-h: #4338ca;     /* indigo hover (darker) */
+  --acc-d: #e0e7ff;     /* indigo tint */
+  --acc-g: rgba(79, 70, 229, .08);
 
-  --grn: #15803D;       /* forest green */
-  --grn-d: rgba(21, 128, 61, .1);
-  --yel: #92400E;       /* dark amber for warnings */
-  --red: #B91C1C;       /* crimson */
-  --pur: #6D28D9;       /* violet */
-  --teal: #0F766E;      /* teal */
-  --orn: #EA580C;       /* orange */
+  --grn: #16a34a;       /* green */
+  --grn-d: rgba(22, 163, 74, .1);
+  --yel: #d97706;       /* amber for warnings */
+  --red: #dc2626;       /* red */
+  --pur: #7c3aed;       /* violet */
+  --teal: #0d9488;      /* teal */
+  --orn: #ea580c;       /* orange */
 
-  --t1: #1C1405;        /* near-black warm */
-  --t2: #57460C;        /* warm dark brown */
-  --t3: #A08C3A;        /* muted gold */
-  --ta: #C2410C;        /* accent text = burnt orange */
+  --t1: #18181b;        /* near-black */
+  --t2: #52525b;        /* secondary text */
+  --t3: #a1a1aa;        /* tertiary / muted */
+  --ta: #4f46e5;        /* accent text = indigo */
 
-  --shadow-sm: 0 1px 3px rgba(120, 80, 0, .08), 0 1px 2px rgba(120, 80, 0, .05);
-  --shadow-md: 0 4px 16px rgba(120, 80, 0, .10), 0 2px 6px rgba(120, 80, 0, .06);
-  --shadow-lg: 0 12px 40px rgba(120, 80, 0, .14), 0 4px 12px rgba(120, 80, 0, .08);
+  --shadow-sm: 0 1px 2px rgba(24, 24, 27, .06), 0 1px 1px rgba(24, 24, 27, .04);
+  --shadow-md: 0 4px 12px rgba(24, 24, 27, .08), 0 2px 4px rgba(24, 24, 27, .05);
+  --shadow-lg: 0 12px 32px rgba(24, 24, 27, .12), 0 4px 8px rgba(24, 24, 27, .06);
 
-  --mono: 'JetBrains Mono', monospace;
-  --dsp: 'Syne', sans-serif;
-  --body: 'DM Sans', sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --dsp: 'Inter', sans-serif;
+  --body: 'Inter', sans-serif;
   --sb: clamp(180px, 20vw, 280px);
   --hdr: 44px;
   --tb: 38px;

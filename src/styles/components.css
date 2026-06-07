@@ -15,12 +15,12 @@
   transition: var(--ease);
   white-space: nowrap;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(194, 65, 12, .3);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, .3);
 }
 
 .btn-up:hover {
-  background: #b43a0a;
-  box-shadow: 0 4px 14px rgba(194, 65, 12, .4);
+  background: #4338ca;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, .4);
 }
 
 .tb {
@@ -49,7 +49,7 @@
 .tb.on {
   background: var(--acc-g);
   color: var(--acc);
-  border-color: rgba(194, 65, 12, .3);
+  border-color: rgba(79, 70, 229, .3);
 }
 
 .tb.grn {
@@ -69,11 +69,11 @@
   cursor: pointer;
   transition: var(--ease);
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(194, 65, 12, .3);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, .3);
 }
 
 .bp:hover {
-  background: #b43a0a;
+  background: #4338ca;
 }
 
 .bp:disabled {
@@ -105,7 +105,7 @@
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(80, 50, 0, .45);
+  background: rgba(24, 24, 27, .45);
   z-index: 100;
   align-items: center;
   justify-content: center;
@@ -191,12 +191,12 @@
   font-size: 11px;
   transition: var(--ease);
   outline: none;
-  box-shadow: inset 0 1px 3px rgba(120, 80, 0, .06);
+  box-shadow: inset 0 1px 3px rgba(24, 24, 27, .06);
 }
 
 .fi-inp:focus {
   border-color: var(--acc);
-  box-shadow: 0 0 0 3px rgba(194, 65, 12, .1);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, .1);
 }
 
 /* TOASTS */
@@ -257,9 +257,7 @@
   font-size: 2em;
   border-bottom: 1px solid var(--bdr);
   padding-bottom: 0.3em;
-  background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--t1);
   display: inline-block;
   width: 100%;
 }
@@ -280,8 +278,8 @@
 .mdv code {
   font-family: var(--mono);
   font-size: 11.5px;
-  background: rgba(194, 65, 12, .06);
-  border: 1px solid rgba(194, 65, 12, .15);
+  background: rgba(79, 70, 229, .06);
+  border: 1px solid rgba(79, 70, 229, .15);
   border-radius: 4px;
   padding: 2px 6px;
   color: var(--acc);
@@ -377,7 +375,7 @@
 
 .search-input-wrap:focus-within {
   border-color: var(--acc);
-  box-shadow: 0 0 0 2px rgba(194, 65, 12, .1);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, .1);
 }
 
 #search-input {
@@ -497,7 +495,7 @@
 .mo-drop:hover,
 .mo-drop.drag {
   border-color: var(--acc);
-  background: rgba(194, 65, 12, 0.04);
+  background: rgba(79, 70, 229, 0.04);
 }
 
 .mo-ico {
@@ -558,8 +556,8 @@
 
 .sc.sel {
   border-color: var(--acc);
-  background: rgba(194, 65, 12, 0.05);
-  box-shadow: 0 0 0 2px rgba(194, 65, 12, 0.1);
+  background: rgba(79, 70, 229, 0.05);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
 }
 
 .sc input { position: absolute; opacity: 0; }
@@ -673,7 +671,7 @@
   font-size: 200px;
   font-family: var(--dsp);
   font-weight: 800;
-  color: rgba(194,65,12,0.03);
+  color: rgba(79, 70, 229,0.03);
   z-index: 0;
   pointer-events: none;
 }
@@ -688,7 +686,7 @@
   transition: var(--ease);
   z-index: 1;
 }
-.dz:hover { border-color: var(--acc); background: rgba(194,65,12,0.02); }
+.dz:hover { border-color: var(--acc); background: rgba(79, 70, 229,0.02); }
 .dz-ico { font-size: 32px; margin-bottom: 12px; }
 .dz-txt { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
 .dz-sub { font-size: 11px; color: var(--t3); }
@@ -718,7 +716,7 @@
 }
 .admonition strong { display: block; margin-bottom: 6px; font-size: 12px; }
 .admonition p { margin: 0 !important; font-size: 12px !important; }
-mark.md-mark { background: rgba(194,65,12,0.2); color: var(--t1); padding: 0 4px; border-radius: 3px; }
+mark.md-mark { background: rgba(79, 70, 229,0.2); color: var(--t1); padding: 0 4px; border-radius: 3px; }
 
 /* Log Panel */
 .lgb {
@@ -915,5 +913,78 @@ mark.md-mark { background: rgba(194,65,12,0.2); color: var(--t1); padding: 0 4px
   .wlc-styles .style-grid {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* --- Phase 4: extracted inline styles --- */
+.sb-footer {
+  border-top: 1px solid var(--bdr);
+  padding: 8px 11px;
+  background: var(--bg-surf);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.sbf-btn {
+  background: transparent;
+  border: 1px solid var(--bdr);
+  color: var(--t3);
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 9px;
+  cursor: pointer;
+  transition: var(--ease);
+}
+.sbf-btn:not(.danger) {
+  flex: 1;
+}
+.sbf-btn:hover {
+  background: var(--bg-hov);
+  color: var(--t1);
+}
+.sbf-btn.danger {
+  border-color: rgba(220, 38, 38, .25);
+  color: rgba(220, 38, 38, .6);
+}
+.sbf-btn.danger:hover {
+  background: rgba(220, 38, 38, .08);
+  color: var(--red);
+}
+
+/* Command palette */
+#cmd-pal {
+  align-items: flex-start;
+  padding-top: 10vh;
+}
+.cmd-pal-box {
+  padding: 0;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .9);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--bdr);
+}
+#cmd-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--bdr);
+  color: var(--t1);
+  padding: 16px 20px;
+  font-size: 16px;
+  font-family: var(--body);
+  outline: none;
+}
+#cmd-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+/* Accurate, low-key local-storage badge (was an over-claiming "Secured" badge) */
+.secure-badge {
+  background: var(--bg-hov);
+  color: var(--t2);
+  border-color: var(--bdr);
 }
 
