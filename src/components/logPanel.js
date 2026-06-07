@@ -5,8 +5,13 @@ import { S } from '../state/store.js';
 import { IDB } from '../services/db.js';
 
 export const LogPanel = {
-  async toggle() {
-    S.logOpen = !S.logOpen;
+  async toggle(forceState) {
+    if (typeof forceState === 'boolean') {
+      S.logOpen = forceState;
+    } else {
+      S.logOpen = !S.logOpen;
+    }
+    
     const lgb = document.getElementById('lgb');
     const btn = document.getElementById('b-log');
     
@@ -22,9 +27,14 @@ export const LogPanel = {
 
   async render() {
     if (!S.activeDoc) return;
+    const targetId = S.activeDoc.id;
     
-    const logs = await IDB.getAll('logs');
-    const docLogs = logs.filter(l => l.docId === S.activeDoc.id).sort((a, b) => b.ts - a.ts);
+    const docLogs = await IDB.getLogs(targetId);
+    
+    // Safety check: ensure active doc hasn't changed while retrieving logs
+    if (!S.activeDoc || S.activeDoc.id !== targetId) return;
+    
+    docLogs.sort((a, b) => b.ts - a.ts);
     
     const cnt = document.getElementById('lg-cnt');
     if (cnt) cnt.textContent = docLogs.length;

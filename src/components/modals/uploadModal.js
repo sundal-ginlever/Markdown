@@ -5,7 +5,14 @@ import { S, STYLES } from '../../state/store.js';
 import { UI } from '../ui.js';
 
 export const UploadModal = {
+  abortController: null,
+
+  _isInitialized: false,
+
   init() {
+    if (this._isInitialized) return;
+    this._isInitialized = true;
+
     const dz = document.getElementById('mo-dz');
     const fi = document.getElementById('fi');
     
@@ -21,6 +28,12 @@ export const UploadModal = {
       dz?.addEventListener(evt, handler);
       
       document.body.addEventListener(evt, (e) => {
+        const hasFiles = e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files');
+        // Allow default drag-and-drop text inputs inside standard inputs, textareas, or contenteditables
+        if (e.target.closest('input, textarea, [contenteditable="true"]') && !hasFiles) {
+          return;
+        }
+
         if (evt === 'drop') {
           // If dropped on the main drag zone, trigger upload modal
           const isMainDz = e.target.closest('#main-dz');
@@ -53,6 +66,18 @@ export const UploadModal = {
       }
     });
 
+    // Event Delegation: 스타일 그리드 단일 리스너 바인딩
+    const grid = document.getElementById('style-grid');
+    grid?.addEventListener('click', (e) => {
+      const card = e.target.closest('.sc');
+      if (!card) return;
+      
+      const id = card.dataset.id;
+      S.selectedStyle = id;
+      localStorage.setItem('dv_style', id);
+      this.renderStyles();
+    });
+
     this.renderStyles();
   },
 
@@ -67,15 +92,6 @@ export const UploadModal = {
           <span class="sc-desc">${st.desc}</span>
         </span>
       </div>`).join('');
-
-    grid.querySelectorAll('.sc').forEach(el => {
-      el.addEventListener('click', () => {
-        const id = el.dataset.id;
-        S.selectedStyle = id;
-        localStorage.setItem('dv_style', id);
-        this.renderStyles();
-      });
-    });
   },
 
   handleFileSelect(e) {
@@ -95,9 +111,15 @@ export const UploadModal = {
   close() {
     UI.toggleModal('up-mo', false);
     S.pendingFile = null;
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
     const info = document.getElementById('sel-f');
     if (info) info.textContent = '';
     const btn = document.getElementById('b-proc');
     if (btn) btn.disabled = true;
+    const fi = document.getElementById('fi');
+    if (fi) fi.value = '';
   }
 };

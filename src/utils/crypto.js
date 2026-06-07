@@ -20,34 +20,42 @@ async function openCryptoDB() {
   });
 }
 
+let cachedKey = null;
+
 async function getOrCreateKey() {
+  if (cachedKey) return cachedKey;
+
   const db = await openCryptoDB();
 
-  // Try to retrieve existing key
-  const existing = await new Promise((resolve, reject) => {
-    const tx = db.transaction('keys', 'readonly');
-    const req = tx.objectStore('keys').get(KEY_NAME);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-
-  if (existing) return existing;
-
-  // Generate a new non-extractable AES-GCM key
-  const key = await crypto.subtle.generateKey(
+  // 1. Pre-generate candidate key before starting the transaction
+  const candidateKey = await crypto.subtle.generateKey(
     { name: ALGO, length: 256 },
     false, // non-extractable — cannot be exported via JS
     ['encrypt', 'decrypt']
   );
 
-  // Persist in IndexedDB
-  await new Promise((resolve, reject) => {
+  // 2. Perform atomic get-and-set inside a single readwrite transaction (multi-tab lock)
+  const key = await new Promise((resolve, reject) => {
     const tx = db.transaction('keys', 'readwrite');
-    const req = tx.objectStore('keys').put(key, KEY_NAME);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
+    const store = tx.objectStore('keys');
+    const getReq = store.get(KEY_NAME);
+
+    getReq.onsuccess = () => {
+      const existing = getReq.result;
+      if (existing) {
+        // Discard the newly generated candidate key, use the existing one!
+        resolve(existing);
+      } else {
+        // Persist the candidate key
+        const putReq = store.put(candidateKey, KEY_NAME);
+        putReq.onsuccess = () => resolve(candidateKey);
+        putReq.onerror = () => reject(putReq.error);
+      }
+    };
+    getReq.onerror = () => reject(getReq.error);
   });
 
+  cachedKey = key;
   return key;
 }
 

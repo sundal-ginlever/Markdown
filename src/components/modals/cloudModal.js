@@ -6,7 +6,12 @@ import { UI } from '../ui.js';
 import { encrypt, decrypt } from '../../utils/crypto.js';
 
 export const CloudModal = {
+  _isInitialized: false,
+
   init() {
+    if (this._isInitialized) return;
+    this._isInitialized = true;
+
     this.loadKeys();
     document.getElementById('cloud-setup-btn')?.addEventListener('click', () => {
       this.loadKeys().then(() => {
@@ -64,6 +69,17 @@ export const CloudModal = {
         UI.showPb(isKo ? '로그아웃 중...' : 'Logging out...');
         try {
           await SB.signOut();
+
+          // 76차 패치: 로그아웃 시 현재 에디터 내용 및 활성 문서 강제 클리어 (세션 격리)
+          const { Editor } = await import('../editor.js');
+          Editor.close();
+
+          // Switch to Guest database on signout
+          const { IDB } = await import('../../services/db.js');
+          await IDB.switchUser('guest');
+          const { loadLocalData } = await import('../../main.js');
+          await loadLocalData();
+
           UI.toast(isKo ? '로그아웃되었습니다.' : 'Logged out.', 'ok');
           this.renderAuthSection();
           if (window.updateSyncStatusUI) window.updateSyncStatusUI();
@@ -100,9 +116,25 @@ export const CloudModal = {
         try {
           const { error } = await SB.signIn(email, pass);
           if (error) throw error;
-          UI.toast(isKo ? '성공적으로 로그인되었습니다.' : 'Successfully logged in.', 'ok');
+
+          // 76차 패치: 로그인 시 현재 에디터 내용 및 활성 문서 강제 클리어 (세션 격리)
+          const { Editor } = await import('../editor.js');
+          Editor.close();
+
+          // Switch to user database on login
+          const { IDB } = await import('../../services/db.js');
+          await IDB.switchUser(SB.user.id);
+          const { loadLocalData } = await import('../../main.js');
+          await loadLocalData();
+
+          UI.toast(isKo ? '성공적으로 로그인되었습니다. 동기화를 시작합니다...' : 'Successfully logged in. Starting synchronization...', 'ok');
           this.renderAuthSection();
           if (window.updateSyncStatusUI) window.updateSyncStatusUI();
+          
+          import('../../services/realtime.js').then(({ RealtimeService }) => {
+            RealtimeService.subscribe();
+          });
+          await SB.pullSync();
         } catch (e) {
           UI.toast(isKo ? '로그인 실패: ' + e.message : 'Login failed: ' + e.message, 'err');
         } finally {
@@ -150,12 +182,24 @@ export const CloudModal = {
         UI.toast(isKo ? '설정 저장 중 오류: ' + e.message : 'Error saving settings: ' + e.message, 'err');
       }
     } else {
+      // 설정을 날리기 전 백그라운드 실시간 채널을 동기/비동기적으로 안전하게 전격 해제
+      import('../../services/realtime.js').then(({ RealtimeService }) => {
+        RealtimeService.unsubscribe();
+      });
+
       localStorage.removeItem('dv_sb_cfg_enc');
       localStorage.removeItem('dv_sb_cfg');
       SB.config = null;
       SB.client = null;
       SB.user = null;
       SB.session = null;
+
+      // Switch back to guest database on config reset
+      const { IDB } = await import('../../services/db.js');
+      await IDB.switchUser('guest');
+      const { loadLocalData } = await import('../../main.js');
+      await loadLocalData();
+
       this.renderAuthSection();
       if (window.updateSyncStatusUI) window.updateSyncStatusUI();
       UI.toast(isKo ? '클라우드 설정이 초기화되었습니다' : 'Cloud settings reset', 'ok');

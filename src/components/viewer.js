@@ -12,41 +12,82 @@ export const Viewer = {
     if (!el || !S.activeDoc) return;
     
     // Reset search highlight navigation state on doc switch
-    SEARCH.activeHls = [];
+    SearchService.activeHls = [];
     SEARCH.hlIdx = -1;
+    SEARCH.hlCount = 0;
     const nav = document.getElementById('hl-nav');
     if (nav) nav.style.display = 'none';
 
     el.innerHTML = parseMd(S.activeDoc.content);
     
-    // Bind Wikilinks clicking & Check dead links
+    // Bind Wikilinks clicking & Check dead links (Dynamic Resolver)
     el.querySelectorAll('.wiki-link').forEach(link => {
       const docName = link.getAttribute('data-target') || link.querySelector('span')?.textContent?.trim();
       if (!docName) return;
       
-      const targetDoc = S.md.find(d => 
+      const target = S.md.find(d => 
         d.name.toLowerCase() === docName.toLowerCase() || 
         d.name.replace(/\.[^.]+$/, '').toLowerCase() === docName.toLowerCase()
       );
       
-      if (!targetDoc) {
+      if (!target) {
         link.classList.add('wiki-dead');
         link.title = S.lang === 'ko' ? '대상 문서가 존재하지 않습니다.' : 'Target document does not exist.';
       } else {
-        link.title = S.lang === 'ko' ? `이동: ${targetDoc.name}` : `Navigate to: ${targetDoc.name}`;
+        link.classList.remove('wiki-dead');
+        link.title = S.lang === 'ko' ? `이동: ${target.name}` : `Navigate to: ${target.name}`;
       }
+    });
+
+    // Event Delegation: Bind single listener on container once
+    if (!el.dataset.delegated) {
+      el.dataset.delegated = 'true';
       
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (targetDoc) {
-          import('./sidebar.js').then(({ Sidebar }) => {
-            Sidebar.openDoc(targetDoc.id);
-          });
+      el.addEventListener('mouseover', (e) => {
+        const link = e.target.closest('.wiki-link');
+        if (!link) return;
+        
+        const docName = link.getAttribute('data-target') || link.querySelector('span')?.textContent?.trim();
+        if (!docName) return;
+        
+        const target = S.md.find(d => 
+          d.name.toLowerCase() === docName.toLowerCase() || 
+          d.name.replace(/\.[^.]+$/, '').toLowerCase() === docName.toLowerCase()
+        );
+        
+        if (!target) {
+          link.classList.add('wiki-dead');
+          link.title = S.lang === 'ko' ? '대상 문서가 존재하지 않습니다.' : 'Target document does not exist.';
         } else {
-          UI.toast(S.lang === 'ko' ? '이동할 대상 문서를 찾을 수 없습니다: ' + docName : 'Target document not found: ' + docName, 'warn');
+          link.classList.remove('wiki-dead');
+          link.title = S.lang === 'ko' ? `이동: ${target.name}` : `Navigate to: ${target.name}`;
         }
       });
-    });
+      
+      el.addEventListener('click', (e) => {
+        const link = e.target.closest('.wiki-link');
+        if (!link) return;
+        e.preventDefault();
+        
+        const docName = link.getAttribute('data-target') || link.querySelector('span')?.textContent?.trim();
+        if (!docName) return;
+        
+        const target = S.md.find(d => 
+          d.name.toLowerCase() === docName.toLowerCase() || 
+          d.name.replace(/\.[^.]+$/, '').toLowerCase() === docName.toLowerCase()
+        );
+        
+        if (target) {
+          import('./sidebar.js').then(({ Sidebar }) => {
+            Sidebar.openDoc(target.id);
+          });
+        } else {
+          import('./ui.js').then(({ UI }) => {
+            UI.toast(S.lang === 'ko' ? '이동할 대상 문서를 찾을 수 없습니다: ' + docName : 'Target document not found: ' + docName, 'warn');
+          });
+        }
+      });
+    }
     
     // Apply search highlights if query exists
     if (SEARCH.query) {
@@ -119,6 +160,10 @@ export const Viewer = {
       return;
     }
     
+    // Capture target document reference and ID securely to prevent race conditions
+    const targetDoc = S.activeDoc;
+    const targetDocId = targetDoc.id;
+    
     const [{ IDB }, { STYLES }, { aiConvert }, { Sidebar }, { SB }] = await Promise.all([
       import('../services/db.js'),
       import('../state/store.js'),
@@ -130,8 +175,12 @@ export const Viewer = {
     UI.toggleModal('reconv-mo', false);
     UI.showPb('원본 데이터 불러오는 중...');
     
+    if (S.abortController) S.abortController.abort();
+    S.abortController = new AbortController();
+    const signal = S.abortController.signal;
+
     try {
-      const rawRes = await IDB.get('raw', S.activeDoc.rawId);
+      const rawRes = await IDB.get('raw', targetDoc.rawId);
       if (!rawRes || !rawRes.data) throw new Error('원본 데이터(Raw)를 찾을 수 없습니다.');
       
       UI.showPb('AI 재변환 중...');
@@ -151,24 +200,42 @@ export const Viewer = {
         text = String(rawRes.data);
       }
       
-      const mdc = await aiConvert(rawRes.name, { type: rawRes.type, cnt: 0, text: text }, text, styleDef);
+      const mdc = await aiConvert(rawRes.name, { type: rawRes.type, cnt: 0, text: text }, text, styleDef, signal);
       
-      const delta = mdc.length - S.activeDoc.content.length;
-      S.activeDoc.content = mdc;
-      S.activeDoc.styleId = styleId;
-      S.activeDoc.updatedAt = new Date();
+      const delta = mdc.length - targetDoc.content.length;
+      targetDoc.content = mdc;
+      targetDoc.styleId = styleId;
+      targetDoc.updatedAt = new Date();
       
-      await IDB.put('docs', S.activeDoc);
-      await IDB.put('logs', { docId: S.activeDoc.id, ts: Date.now(), msg: `스타일 재변환 (${styleDef.name})`, delta });
-      await SB.saveDoc(S.activeDoc);
+      await IDB.put('docs', targetDoc);
+      const logEntry = { docId: targetDocId, ts: Date.now(), msg: `스타일 재변환 (${styleDef.name})`, delta };
+      await IDB.put('logs', logEntry);
+      await SB.saveLog(targetDocId, logEntry);
+      await SB.saveDoc(targetDoc);
       
-      this.render();
-      Sidebar.render();
+      // Update UI only if the target document is still the active one
+      if (S.activeDoc && S.activeDoc.id === targetDocId) {
+        this.render();
+        Sidebar.render();
+        
+        // Update LogPanel if it is currently open
+        if (S.logOpen) {
+          import('./logPanel.js').then(({ LogPanel }) => LogPanel.render());
+        }
+      } else {
+        Sidebar.render();
+      }
+      
       UI.toast('성공적으로 재변환되었습니다.', 'ok');
     } catch (e) {
-      console.error(e);
-      UI.toast('재변환 오류: ' + e.message, 'err');
+      if (e.message !== 'Cancelled' && e.name !== 'AbortError') {
+        console.error(e);
+        UI.toast('재변환 오류: ' + e.message, 'err');
+      }
     } finally {
+      if (S.abortController?.signal === signal) {
+        S.abortController = null;
+      }
       UI.hidePb();
     }
   }

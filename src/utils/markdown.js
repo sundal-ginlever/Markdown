@@ -14,18 +14,34 @@ marked.setOptions({
 // Custom Renderer for Admonitions and Heading IDs
 const renderer = {
   blockquote({ text }) {
-    // In marked v11+, the argument is a token object
-    const admonitionMatch = text.match(/^<p>\[!(NOTE|TIP|WARNING|IMPORTANT|INFO)\](.*?)\n?([\s\S]*?)<\/p>$/i) || 
-                            text.match(/^\[!(NOTE|TIP|WARNING|IMPORTANT|INFO)\](.*?)\n?([\s\S]*)$/i);
-    if (admonitionMatch) {
-      const type = admonitionMatch[1].toUpperCase();
-      const title = admonitionMatch[2].trim();
-      const body = admonitionMatch[3].trim();
+    let cleanText = text.trim();
+    const isParagraphWrapped = cleanText.startsWith('<p>') && cleanText.endsWith('</p>');
+    
+    // Extract Admonition tag regardless of multiple paragraphs
+    const admonitionRegex = /^(?:<p>)?\[!(NOTE|TIP|WARNING|IMPORTANT|INFO)\](.*?)(?:\n|<br>|<\/p>)/i;
+    const match = cleanText.match(admonitionRegex);
+    
+    if (match) {
+      const type = match[1].toUpperCase();
+      const title = match[2].trim();
+      
+      let body = cleanText.substring(match[0].length).trim();
+      
+      // If it was paragraph wrapped and body doesn't end with </p>, ensure it closes properly
+      if (isParagraphWrapped && !body.endsWith('</p>') && body.length > 0) {
+        body = body + '</p>';
+      }
+      // If the header match stripped <p> but body has the rest, restore the opening <p> tag
+      if (match[0].startsWith('<p>') && !body.startsWith('<p>') && body.length > 0) {
+        body = '<p>' + body;
+      }
+
       const icons = { NOTE: 'ℹ️', TIP: '💡', WARNING: '⚠️', IMPORTANT: '🔴', INFO: 'ℹ️' };
       const colors = { NOTE: 'var(--acc)', TIP: 'var(--grn)', WARNING: 'var(--yel)', IMPORTANT: 'var(--red)', INFO: 'var(--acc)' };
+      
       return `<blockquote class="admonition" style="border-left-color:${colors[type]}">
         <strong>${icons[type]} ${type}${title ? ': ' + title : ''}</strong>
-        <p>${body}</p>
+        <div>${body}</div>
       </blockquote>`;
     }
     return `<blockquote>${text}</blockquote>`;
@@ -47,30 +63,62 @@ const renderer = {
 
 marked.use({ renderer });
 
+const wikiLinkExtension = {
+  name: 'wikilink',
+  level: 'inline',
+  start(src) { return src.match(/\[\[/)?.index; },
+  tokenizer(src, tokens) {
+    const rule = /^\[\[([^\]]+)\]\]/;
+    const match = rule.exec(src);
+    if (match) {
+      const parts = match[1].split('|');
+      const target = parts[0].trim();
+      const display = parts[1] ? parts[1].trim() : target;
+      return {
+        type: 'wikilink',
+        raw: match[0],
+        target: target,
+        display: display
+      };
+    }
+  },
+  renderer(token) {
+    return `<a href="#" class="wiki-link" data-target="${token.target}">[[<span>${token.display}</span>]]</a>`;
+  }
+};
+
+const highlightExtension = {
+  name: 'highlight',
+  level: 'inline',
+  start(src) { return src.match(/==/)?.index; },
+  tokenizer(src, tokens) {
+    const rule = /^==([^=]+)==/;
+    const match = rule.exec(src);
+    if (match) {
+      return {
+        type: 'highlight',
+        raw: match[0],
+        text: match[1]
+      };
+    }
+  },
+  renderer(token) {
+    return `<mark class="md-mark">${token.text}</mark>`;
+  }
+};
+
+marked.use({ extensions: [wikiLinkExtension, highlightExtension] });
+
 export function parseMd(s) {
   if (!s) return '';
   
-  // Pre-process custom syntax not handled by marked (e.g. Wikilinks, Mark)
-  let processed = s;
-  
-  // ==Highlight==
-  processed = processed.replace(/==(.+?)==/g, '<mark class="md-mark">$1</mark>');
-  
-  // [[Wikilink]] or [[Wikilink|Alias]]
-  processed = processed.replace(/\[\[([^\]]+)\]\]/g, (match, content) => {
-    const parts = content.split('|');
-    const target = parts[0].trim();
-    const display = parts[1] ? parts[1].trim() : target;
-    return `<a href="#" class="wiki-link" data-target="${target}">[[<span>${display}</span>]]</a>`;
-  });
-
   // Convert to HTML
-  const rawHtml = marked.parse(processed);
+  const rawHtml = marked.parse(s);
   
   // Sanitize
   return DOMPurify.sanitize(rawHtml, {
     ADD_TAGS: ['mark'],
-    ADD_ATTR: ['target', 'rel']
+    ADD_ATTR: ['target', 'rel', 'data-target', 'class', 'style']
   });
 }
 

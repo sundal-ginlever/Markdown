@@ -31,10 +31,18 @@ export const UI = {
           return;
         }
 
-        // 4. Dismiss other open modals
+        // 4. Dismiss other open modals safely
         const otherModals = Array.from(document.querySelectorAll('.ov.show')).filter(el => el.id !== 'cmd-pal');
         if (otherModals.length > 0) {
-          otherModals.forEach(el => el.classList.remove('show'));
+          otherModals.forEach(el => {
+            if (el.id === 'up-mo') {
+              import('./modals/uploadModal.js').then(({ UploadModal }) => UploadModal.close());
+            } else if (el.id === 'key-mo') {
+              import('./modals/settingsModal.js').then(({ SettingsModal }) => SettingsModal.close());
+            } else {
+              el.classList.remove('show');
+            }
+          });
           return;
         }
       }

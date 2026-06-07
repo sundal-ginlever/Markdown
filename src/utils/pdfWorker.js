@@ -6,14 +6,27 @@ self.onmessage = async (e) => {
   const { arrayBuffer, workerSrc } = e.data;
   
   try {
-    // Dynamic import inside worker
-    const pdfjs = await import('pdfjs-dist');
-    
-    // Set worker source — use library version with fallback
-    const pdfVersion = pdfjs.version || '4.10.38';
-    pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfVersion}/pdf.worker.min.mjs`;
-    
-    if (workerSrc) pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+    let pdfjs;
+    try {
+      // Dynamic import inside worker (modern browser standard)
+      pdfjs = await import('pdfjs-dist');
+      
+      const pdfVersion = pdfjs.version || '4.10.38';
+      pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfVersion}/pdf.worker.min.mjs`;
+      if (workerSrc) pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+    } catch (importErr) {
+      console.warn('Worker ESM dynamic import failed, falling back to legacy UMD script loading:', importErr);
+      
+      // Fallback UMD loads robust ES5-compatible build from cdnjs
+      self.importScripts('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js');
+      pdfjs = self['pdfjsLib'] || self['pdfjs-dist/build/pdf'];
+      
+      if (!pdfjs) {
+        throw new Error('Fallback PDF library failed to initialize via importScripts');
+      }
+      
+      pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    }
     
     const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
     const totalPages = pdf.numPages;

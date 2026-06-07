@@ -17,9 +17,34 @@ export const Sidebar = {
     this.renderRaw();
   },
 
+  lastRenderKey: null,
+
   renderMD() {
     const el = document.getElementById('md-l');
     if (!el) return;
+
+    const currentRenderKey = JSON.stringify({
+      mdCount: S.md.length,
+      favorites: S.favorites,
+      sort: S.sort,
+      filter: SEARCH.filter,
+      query: SEARCH.query,
+      activeId: S.activeDoc?.id,
+      folders: S.folders,
+      secOpen: S.secOpen,
+      lang: S.lang,
+      docHash: S.md.map(d => {
+        const time = d.updatedAt instanceof Date 
+          ? d.updatedAt.getTime() 
+          : (Date.parse(d.updatedAt) || 0);
+        return `${d.id}:${d.name}:${d.folderId}:${time}`;
+      }).join('|')
+    });
+
+    if (this.lastRenderKey === currentRenderKey) {
+      return;
+    }
+    this.lastRenderKey = currentRenderKey;
     
     let filtered = S.md;
     if (SEARCH.filter !== 'all') {
@@ -80,7 +105,7 @@ export const Sidebar = {
         <div class="fi ${isAct ? 'act' : ''}" data-id="${f.id}">
           <div class="fi-main">
             <span class="fi-ico" style="${isFav ? 'color:gold;font-size:12px' : ''}">${isFav ? '★' : '🗒'}</span>
-            <span class="fi-nm" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${f.name}</span>
+            <span class="fi-nm" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${SearchService.escapeHtml(f.name)}</span>
             <button class="fi-fld" title="${t('move_to_folder') || '폴더로 이동'}" style="background:none;border:none;cursor:pointer;opacity:0.6;font-size:11px;margin-right:4px;padding:2px;">📁</button>
             <button class="fi-del" title="삭제">✕</button>
           </div>
@@ -103,7 +128,7 @@ export const Sidebar = {
             <div class="fld-h" style="display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:11px;font-weight:600;color:var(--t2);cursor:pointer;background:var(--bg-hov);border-radius:4px;margin-bottom:2px;user-select:none;">
               <span class="fld-chv" style="font-size:8px;transition:transform 0.2s;display:inline-block;${isCollapsed ? 'transform:rotate(-90deg);' : ''}">▼</span>
               <span>📁</span>
-              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${folder.name}</span>
+              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${SearchService.escapeHtml(folder.name)}</span>
               <span class="badge" style="background:rgba(0,0,0,0.05);color:var(--t3);padding:1px 5px;border-radius:8px;font-size:9px;font-weight:normal;">${folderDocs.length}</span>
               <button class="fld-del" style="background:none;border:none;color:var(--red);opacity:0.6;cursor:pointer;font-size:10px;padding:2px 4px;margin-left:4px;" title="폴더 삭제">✕</button>
             </div>
@@ -156,7 +181,7 @@ export const Sidebar = {
       <div class="fi raw" data-id="${f.id}">
         <div class="fi-main">
           <span class="fi-ico">📄</span>
-          <span class="fi-nm">${f.name}</span>
+          <span class="fi-nm">${SearchService.escapeHtml(f.name)}</span>
         </div>
       </div>
     `).join('');
@@ -165,60 +190,69 @@ export const Sidebar = {
     if (rawCntEl) rawCntEl.textContent = S.raw.length;
   },
 
+  _isInitialized: false,
+
   init() {
+    if (this._isInitialized) return;
+    this._isInitialized = true;
+
     this.initResizer();
     
     // Event Delegation for file list
     const list = document.getElementById('md-l');
     list?.addEventListener('click', async (e) => {
-      const delBtn = e.target.closest('.fi-del');
-      const fldBtn = e.target.closest('.fi-fld');
-      const item = e.target.closest('.fi');
-      
-      const fldH = e.target.closest('.fld-h');
-      const fldDel = e.target.closest('.fld-del');
-      const fldSec = e.target.closest('.fld-sec');
+      try {
+        const delBtn = e.target.closest('.fi-del');
+        const fldBtn = e.target.closest('.fi-fld');
+        const item = e.target.closest('.fi');
+        
+        const fldH = e.target.closest('.fld-h');
+        const fldDel = e.target.closest('.fld-del');
+        const fldSec = e.target.closest('.fld-sec');
 
-      // Click folder delete button
-      if (fldDel && fldSec) {
-        e.stopPropagation();
-        const fldId = fldSec.dataset.folderId;
-        await this.deleteFolder(fldId);
-        return;
-      }
-
-      // Click folder header to collapse/expand
-      if (fldH && fldSec) {
-        e.stopPropagation();
-        const fldId = fldSec.dataset.folderId;
-        S.secOpen[fldId] = S.secOpen[fldId] !== false ? false : true;
-        this.render();
-        return;
-      }
-
-      // Delete file button
-      if (delBtn && item) {
-        e.stopPropagation();
-        const id = item.dataset.id;
-        const msg = S.lang === 'ko' ? '이 문서를 삭제하시겠습니까?' : 'Are you sure you want to delete this document?';
-        if (confirm(msg)) {
-          this.deleteDoc(id);
+        // Click folder delete button
+        if (fldDel && fldSec) {
+          e.stopPropagation();
+          const fldId = fldSec.dataset.folderId;
+          await this.deleteFolder(fldId);
+          return;
         }
-        return;
-      }
 
-      // Move file to folder button
-      if (fldBtn && item) {
-        e.stopPropagation();
-        const id = item.dataset.id;
-        this.promptMoveDoc(id);
-        return;
-      }
+        // Click folder header to collapse/expand
+        if (fldH && fldSec) {
+          e.stopPropagation();
+          const fldId = fldSec.dataset.folderId;
+          S.secOpen[fldId] = S.secOpen[fldId] !== false ? false : true;
+          this.render();
+          return;
+        }
 
-      // Open document
-      if (item) {
-        const id = item.dataset.id;
-        this.openDoc(id);
+        // Delete file button
+        if (delBtn && item) {
+          e.stopPropagation();
+          const id = item.dataset.id;
+          const msg = S.lang === 'ko' ? '이 문서를 삭제하시겠습니까?' : 'Are you sure you want to delete this document?';
+          if (confirm(msg)) {
+            await this.deleteDoc(id);
+          }
+          return;
+        }
+
+        // Move file to folder button
+        if (fldBtn && item) {
+          e.stopPropagation();
+          const id = item.dataset.id;
+          await this.promptMoveDoc(id);
+          return;
+        }
+
+        // Open document
+        if (item) {
+          const id = item.dataset.id;
+          this.openDoc(id);
+        }
+      } catch (err) {
+        console.error('Error in sidebar click handler:', err);
       }
     });
 
@@ -251,11 +285,13 @@ export const Sidebar = {
   openDoc(id) {
     const doc = S.md.find(d => d.id === id);
     if (!doc) return;
-    S.activeDoc = doc;
-    Router.navigate(id);
-    Viewer.render();
-    this.render();
-    QAPanel.render();
+
+    // 문서 전환 시 기존 진행 중이던 Q&A 요청을 전격 중단 (사이드바 조기 중단용 유지)
+    if (QAPanel.abortController) {
+      QAPanel.abortController.abort();
+    }
+
+    Router.navigate(id); // 74차 패치: 모든 상태 처리 및 렌더링을 라우터에 일원화 위임!
   },
 
   async deleteDoc(id) {
@@ -268,7 +304,13 @@ export const Sidebar = {
     S.favorites = S.favorites.filter(x => x !== id);
     localStorage.setItem('dv_favs', JSON.stringify(S.favorites));
     S.md = S.md.filter(d => d.id !== id);
+    S.raw = S.raw.filter(r => r.id !== id);
+    delete S.docFolder[id];
     if (S.activeDoc?.id === id) {
+      // 삭제 대상 문서가 활성화되어 있었다면 진행 중이던 Q&A 전격 중단
+      if (QAPanel.abortController) {
+        QAPanel.abortController.abort();
+      }
       const { Editor } = await import('./editor.js');
       Editor.close();
     }
@@ -301,16 +343,21 @@ export const Sidebar = {
       await IDB.del('folders', folderId);
       
       // Detach documents in the deleted folder
-      let updatedCount = 0;
+      const docsToUpdate = [];
       for (const d of S.md) {
         if (d.folderId === folderId) {
           d.folderId = null;
           d.updatedAt = new Date();
           await IDB.put('docs', d);
-          try {
-            await SB.saveDoc(d);
-          } catch(e) {}
-          updatedCount++;
+          docsToUpdate.push(d);
+        }
+      }
+      
+      if (docsToUpdate.length > 0) {
+        try {
+          await SB.saveDocsBulk(docsToUpdate);
+        } catch (e) {
+          console.warn('Supabase bulk save failed, will sync later:', e);
         }
       }
       
@@ -321,12 +368,14 @@ export const Sidebar = {
         }
       });
       
+      delete S.secOpen[folderId];
+      
       this.render();
       UI.toast(isKo ? '폴더가 삭제되었습니다.' : 'Folder deleted.', 'ok');
     }
   },
 
-  promptMoveDoc(docId) {
+  async promptMoveDoc(docId) {
     const isKo = S.lang === 'ko';
     if (!S.folders || S.folders.length === 0) {
       UI.toast(isKo ? '생성된 폴더가 없습니다. 📁+ 버튼으로 새 폴더를 먼저 만드세요.' : 'No folders found. Create a folder using the 📁+ button first.', 'warn');
@@ -348,10 +397,10 @@ export const Sidebar = {
     }
     
     if (val === 0) {
-      this.moveDocToFolder(docId, null);
+      await this.moveDocToFolder(docId, null);
     } else {
       const folder = S.folders[val - 1];
-      this.moveDocToFolder(docId, folder.id);
+      await this.moveDocToFolder(docId, folder.id);
     }
   },
 
@@ -379,13 +428,26 @@ export const Sidebar = {
 
   initResizer() {
     const rsz = document.getElementById('rsz');
+    if (!rsz) return;
+    
     let isMd = false;
-    rsz?.addEventListener('mousedown', () => isMd = true);
-    document.addEventListener('mousemove', (e) => {
+    
+    const onMouseMove = (e) => {
       if (!isMd) return;
       const w = Math.max(150, Math.min(600, e.clientX));
       document.documentElement.style.setProperty('--sb', w + 'px');
+    };
+    
+    const onMouseUp = () => {
+      isMd = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    
+    rsz.addEventListener('mousedown', (e) => {
+      isMd = true;
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
     });
-    document.addEventListener('mouseup', () => isMd = false);
   }
 };

@@ -3,7 +3,7 @@
  */
 import { S } from '../state/store.js';
 
-export async function aiConvert(fname, fd, textOverride, styleDef) {
+export async function aiConvert(fname, fd, textOverride, styleDef, signal) {
   const p = S.ai.provider;
   const prompt = buildPrompt(fname, fd, textOverride, styleDef);
 
@@ -14,6 +14,7 @@ export async function aiConvert(fname, fd, textOverride, styleDef) {
     const r = await fetch('/api/claude', {
       method: 'POST',
       headers: h,
+      signal: signal,
       body: JSON.stringify({
         model: S.ai.models.claude || 'claude-3-5-sonnet-20240620',
         max_tokens: 4096,
@@ -35,6 +36,7 @@ export async function aiConvert(fname, fd, textOverride, styleDef) {
     const r = await fetch('/api/openai', {
       method: 'POST',
       headers: h,
+      signal: signal,
       body: JSON.stringify({
         model: S.ai.models.gpt4,
         messages: [{ role: 'user', content: prompt }],
@@ -50,6 +52,7 @@ export async function aiConvert(fname, fd, textOverride, styleDef) {
     const r = await fetch('/api/gemini', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: signal,
       body: JSON.stringify({
         model: S.ai.models.gemini,
         contents: [{ parts: [{ text: prompt }] }],
@@ -74,6 +77,7 @@ export async function aiConvert(fname, fd, textOverride, styleDef) {
     const r = await fetch(S.ai.localUrl, {
       method: 'POST',
       headers: h,
+      signal: signal,
       body: JSON.stringify({
         model: S.ai.models.local || 'default',
         messages: [{ role: 'user', content: prompt }]
@@ -107,19 +111,32 @@ function buildPrompt(fname, fd, textOverride, styleDef) {
     systemPrompt = styleDef.prompt(fname + fileCtx, ext, isSh, cnt);
   }
 
-  const textToConvert = textOverride || fd.text.substring(0, 30000);
+  let isTruncated = false;
+  let textToConvert = textOverride || fd.text;
+  if (textToConvert.length > 30000) {
+    textToConvert = textToConvert.substring(0, 30000);
+    isTruncated = true;
+  }
 
   return `${systemPrompt}
-
+${isTruncated ? '\n[SYSTEM WARNING: The original document was too long and has been truncated. Please convert the provided portion and note that it is incomplete.]\n' : ''}
 ---
 CONTENT TO CONVERT:
 ${textToConvert}
 ---`;
 }
 
-export async function callQAApi(userQuestion, activeDoc, history) {
+export async function callQAApi(userQuestion, activeDoc, history, signal) {
   const p = S.ai.provider;
   const doc = activeDoc;
+
+  const contentLimit = 16000;
+  let docContent = doc.content;
+  let isTruncated = false;
+  if (docContent.length > contentLimit) {
+    docContent = docContent.substring(0, contentLimit);
+    isTruncated = true;
+  }
 
   const systemPrompt = `You are an expert document analyst and assistant. The user has opened the following document and wants to ask questions about it.
 
@@ -128,8 +145,10 @@ Conversion Style: ${doc.styleId || 'dev'}
 Document Length: ${doc.content.length} characters
 
 --- DOCUMENT CONTENT START ---
-${doc.content.substring(0, 16000)}
+${docContent}
 --- DOCUMENT CONTENT END ---
+
+${isTruncated ? '[SYSTEM WARNING: The document content provided above has been truncated due to length limits. If the user asks about something not present, explicitly state that it might be in the truncated portion.]' : ''}
 
 Instructions:
 - Answer questions based on the document content above
@@ -154,6 +173,7 @@ Instructions:
     const r = await fetch('/api/claude', {
       method: 'POST',
       headers: h,
+      signal: signal,
       body: JSON.stringify({
         model: S.ai.models.claude,
         max_tokens: 1000,
@@ -172,6 +192,7 @@ Instructions:
     const r = await fetch('/api/openai', {
       method: 'POST',
       headers: h,
+      signal: signal,
       body: JSON.stringify({
         model: S.ai.models.gpt4,
         messages: [{ role: 'system', content: systemPrompt }, ...messages]
@@ -191,16 +212,20 @@ Instructions:
     let lastRole = 'model';
     messages.forEach(m => {
       const currentRole = m.role === 'assistant' ? 'model' : 'user';
+      const cleanContent = (m.content || '').trim();
+      if (!cleanContent) return; // Skip empty content to prevent Gemini 400 Bad Request
+
       if (currentRole !== lastRole) {
         geminiMsgs.push({
           role: currentRole,
-          parts: [{ text: m.content }]
+          parts: [{ text: cleanContent }]
         });
         lastRole = currentRole;
       } else {
-        // Merge consecutive roles to preserve content without breaking Gemini role rules
+        // Strict Alternation Guard: Merge consecutive identical roles to preserve context safely
         if (geminiMsgs.length > 0) {
-          geminiMsgs[geminiMsgs.length - 1].parts[0].text += '\n\n' + m.content;
+          const lastPart = geminiMsgs[geminiMsgs.length - 1].parts[0];
+          lastPart.text = (lastPart.text + '\n\n' + cleanContent).trim();
         }
       }
     });
@@ -209,6 +234,7 @@ Instructions:
     const r = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: signal,
       body: JSON.stringify({ model: S.ai.models.gemini, contents: geminiMsgs, apiKey: S.ai.keys.gemini || '' })
     });
     if (!r.ok) {
@@ -229,6 +255,7 @@ Instructions:
     const r = await fetch(S.ai.localUrl, {
       method: 'POST',
       headers: h,
+      signal: signal,
       body: JSON.stringify({
         model: S.ai.models.local || 'default',
         messages: [{ role: 'system', content: systemPrompt }, ...messages]

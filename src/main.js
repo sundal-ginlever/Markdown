@@ -3,7 +3,7 @@
  */
 import { S, STYLES, SEARCH, subscribe } from './state/store.js';
 import { I18N, t, setLang, renderI18N } from './utils/i18n.js';
-import { decrypt } from './utils/crypto.js';
+import { decrypt, encrypt } from './utils/crypto.js';
 import { IDB } from './services/db.js';
 import { SB } from './services/supabase.js';
 import { aiConvert } from './services/ai.js';
@@ -27,6 +27,34 @@ import { SettingsModal } from './components/modals/settingsModal.js';
 import { CloudModal } from './components/modals/cloudModal.js';
 import { LogPanel } from './components/logPanel.js';
 
+// --- Local Data Loader for Database Partitioning Switch ---
+export async function loadLocalData() {
+  const docs = await IDB.loadDocs();
+  const rawFiles = await IDB.getRawMetadata();
+  const folders = await IDB.getAll('folders');
+  
+  S.folders = folders || [];
+  S.md = docs.sort((a, b) => b.createdAt - a.createdAt);
+  S.raw = rawFiles.map(r => ({ id: r.id, name: r.name || 'Original File', type: r.type }));
+  
+  // Populate S.docFolder from loaded docs
+  S.docFolder = {};
+  S.md.forEach(d => {
+    if (d.folderId) {
+      S.docFolder[d.id] = d.folderId;
+    }
+  });
+
+  const { Sidebar } = await import('./components/sidebar.js');
+  Sidebar.render();
+  
+  // Close active document reactively if it's no longer present in the newly switched database
+  if (S.activeDoc && !S.md.find(d => d.id === S.activeDoc.id)) {
+    const { Editor } = await import('./components/editor.js');
+    Editor.close();
+  }
+}
+
 // --- Initialization ---
 async function init() {
   console.log('DocVault Initializing...');
@@ -45,6 +73,15 @@ async function init() {
         const data = JSON.parse(decodeURIComponent(escape(atob(aiSettings))));
         Object.assign(S.ai, data);
         console.info('Migrated AI settings from legacy btoa format');
+
+        // Auto-Migrate: Encrypt and save back with the new AES-GCM logic
+        try {
+          const secureCipher = await encrypt(JSON.stringify(data));
+          localStorage.setItem('dv_ai', secureCipher);
+          console.info('Auto-migrated and secured legacy AI settings via AES-GCM');
+        } catch (encErr) {
+          console.warn('Failed to encrypt legacy AI settings during auto-migration:', encErr);
+        }
       } catch (_) {
         console.warn('Failed to load AI settings', e);
       }
@@ -52,11 +89,18 @@ async function init() {
   }
 
   // Initialize Services
-  await IDB.init();
-  await IDB.migrateFromLocalStorage('docvault_data', t, UI.showPb, UI.hidePb, UI.toast);
   const sbClient = await SB.init();
+  if (sbClient && SB.user) {
+    await IDB.switchUser(SB.user.id);
+  } else {
+    await IDB.init();
+  }
+  await IDB.migrateFromLocalStorage('docvault_data', t, UI.showPb, UI.hidePb, UI.toast);
   if (sbClient) {
     RealtimeService.subscribe();
+    if (SB.user) {
+      SB.pullSync();
+    }
   }
 
   // Dynamic Sync Status UI Updater
@@ -88,6 +132,11 @@ async function init() {
     if (SB.client && SB.user) {
       UI.toast(S.lang === 'ko' ? '인터넷에 다시 연결되었습니다. 동기화를 진행합니다.' : 'Connection restored. Syncing changes...', 'ok');
       SB.processQueue();
+      
+      // Auto-Reconnect Realtime Socket Subscription on network restoration
+      import('./services/realtime.js').then(({ RealtimeService }) => {
+        RealtimeService.subscribe();
+      }).catch(e => console.warn('Failed to auto-reconnect realtime channel:', e));
     }
   });
   window.addEventListener('offline', () => {
@@ -109,22 +158,7 @@ async function init() {
   bindEvents();
 
   // Initial Data Fetch
-  const docs = await IDB.loadDocs();
-  const rawFiles = await IDB.getAll('raw');
-  const folders = await IDB.getAll('folders');
-  
-  S.folders = folders || [];
-  S.md = docs.sort((a, b) => b.createdAt - a.createdAt);
-  S.raw = rawFiles.map(r => ({ id: r.id, name: r.name || 'Original File', type: r.type }));
-  
-  // Populate S.docFolder from loaded docs
-  S.md.forEach(d => {
-    if (d.folderId) {
-      S.docFolder[d.id] = d.folderId;
-    }
-  });
-
-  Sidebar.render();
+  await loadLocalData();
   
   Router.init();
 
@@ -171,7 +205,7 @@ function bindEvents() {
         if (ov.id === 'up-mo') {
           import('./components/modals/uploadModal.js').then(({ UploadModal }) => UploadModal.close());
         } else if (ov.id === 'key-mo') {
-          UI.toggleModal('key-mo', false);
+          SettingsModal.close();
         } else if (ov.id === 'cloud-mo') {
           UI.toggleModal('cloud-mo', false);
         } else if (ov.id === 'reconv-mo') {
@@ -187,7 +221,7 @@ function bindEvents() {
   document.querySelector('.btn-new-f')?.addEventListener('click', (e) => {
     e.stopPropagation();
     import('./components/sidebar.js').then(({ Sidebar }) => {
-      Sidebar.createFolder();
+      Sidebar.createFolder().catch(err => console.error('Failed to create folder:', err));
     });
   });
 
@@ -201,7 +235,7 @@ function bindEvents() {
 
   // Modals
   document.getElementById('btn-up-cancel')?.addEventListener('click', () => UploadModal.close());
-  document.getElementById('btn-key-cancel')?.addEventListener('click', () => UI.toggleModal('key-mo', false));
+  document.getElementById('btn-key-cancel')?.addEventListener('click', () => SettingsModal.close());
   document.getElementById('save-key-btn')?.addEventListener('click', () => SettingsModal.save());
   document.getElementById('fi')?.addEventListener('change', UploadModal.handleFileSelect);
   document.getElementById('b-proc')?.addEventListener('click', processFile);
@@ -231,7 +265,8 @@ function bindEvents() {
   });
 
   // Mobile Sidebar Toggle
-  document.getElementById('mob-sb-btn')?.addEventListener('click', () => {
+  document.getElementById('mob-sb-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
     document.getElementById('sb')?.classList.toggle('show');
   });
   document.addEventListener('click', (e) => {
@@ -245,8 +280,11 @@ function bindEvents() {
   document.getElementById('b-view')?.addEventListener('click', () => Editor.setMode('view'));
   document.getElementById('b-edit')?.addEventListener('click', () => Editor.setMode('edit'));
   document.getElementById('b-save')?.addEventListener('click', () => Editor.save());
-  document.getElementById('b-log')?.addEventListener('click', () => LogPanel.toggle());
-  document.getElementById('b-log-close')?.addEventListener('click', () => LogPanel.toggle());
+  document.getElementById('b-log')?.addEventListener('click', () => LogPanel.toggle(true));
+  document.getElementById('b-log-close')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    LogPanel.toggle(false);
+  });
 
   // Favorites Toggle
   const toggleFav = () => {
@@ -369,7 +407,10 @@ function bindEvents() {
         S.activeDoc.name = nw;
         S.activeDoc.updatedAt = new Date();
         await IDB.put('docs', S.activeDoc);
-        await IDB.put('logs', { docId: S.activeDoc.id, ts: Date.now(), msg: `문서 이름 변경: ${nw}` });
+        const logEntry = { docId: S.activeDoc.id, ts: Date.now(), msg: `문서 이름 변경: ${nw}` };
+        await IDB.put('logs', logEntry);
+        await SB.saveDoc(S.activeDoc);
+        await SB.saveLog(S.activeDoc.id, logEntry);
         Sidebar.render();
       }
       nameEl.textContent = S.activeDoc.name;
@@ -395,6 +436,7 @@ function bindEvents() {
   document.getElementById('b-qa')?.addEventListener('click', () => QAPanel.toggle());
   document.getElementById('qa-close-btn')?.addEventListener('click', () => QAPanel.toggle());
   document.getElementById('qa-send')?.addEventListener('click', () => QAPanel.ask());
+  document.getElementById('qa-clear-btn')?.addEventListener('click', () => QAPanel.clearHistory());
   const qaInp = document.getElementById('qa-input');
   qaInp?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); QAPanel.ask(); }
@@ -416,7 +458,8 @@ function bindEvents() {
           IDB.clear('docs'),
           IDB.clear('raw'),
           IDB.clear('logs'),
-          IDB.clear('folders')
+          IDB.clear('folders'),
+          IDB.clear('sync_queue')
         ]);
         S.md = [];
         S.raw = [];
@@ -445,27 +488,64 @@ async function processFile() {
   const file = S.pendingFile;
   UI.showPb('파일 분석 중...');
   
+  // Safe dynamic import to get the isolated UploadModal controller
+  const { UploadModal } = await import('./components/modals/uploadModal.js');
+  if (UploadModal.abortController) UploadModal.abortController.abort();
+  UploadModal.abortController = new AbortController();
+  const signal = UploadModal.abortController.signal;
+
   try {
     const ext = file.name.split('.').pop().toLowerCase();
     let fd;
     if (['xlsx', 'xls', 'ods'].includes(ext)) {
-      const d = await parseSheet(file);
+      const d = await parseSheet(file, signal);
       fd = { type: 'sheet', text: sheetsToText(d), cnt: d.names.length };
     } else if (ext === 'pdf') {
-      fd = await extractPdf(file, UI.showPb, null);
+      fd = await extractPdf(file, UI.showPb, null, signal);
     } else if (ext === 'docx') {
-      fd = await extractDocx(file, UI.showPb, null);
+      fd = await extractDocx(file, UI.showPb, null, signal);
     } else {
-      fd = await new Promise(res => {
+      const allowedTextExts = ['txt', 'md', 'csv', 'json', 'html', 'xml', 'js', 'css', 'py', 'java', 'c', 'cpp', 'rs', 'go', 'ts'];
+      if (!allowedTextExts.includes(ext)) {
+        throw new Error(S.lang === 'ko' ? `지원하지 않는 파일 형식입니다 (.${ext}). 텍스트 또는 문서(PDF, DOCX, XLSX) 파일만 업로드 가능합니다.` : `Unsupported file type (.${ext}). Only text or document (PDF, DOCX, XLSX) files are allowed.`);
+      }
+      fd = await new Promise((res, rej) => {
+        if (signal && signal.aborted) return rej(new Error('Cancelled'));
+        
+        const onAbort = () => {
+          cleanup();
+          rej(new Error('Cancelled'));
+        };
+
+        const cleanup = () => {
+          if (signal) {
+            signal.removeEventListener('abort', onAbort);
+          }
+        };
+
+        if (signal) {
+          signal.addEventListener('abort', onAbort);
+        }
+
         const r = new FileReader();
-        r.onload = e => res({ type: 'text', text: e.target.result, cnt: 0 });
+        r.onload = e => {
+          cleanup();
+          res({ type: 'text', text: e.target.result, cnt: 0 });
+        };
+        r.onerror = err => {
+          cleanup();
+          rej(err);
+        };
         r.readAsText(file, 'UTF-8');
       });
     }
 
     const styleDef = STYLES.find(s => s.id === S.selectedStyle) || STYLES[0];
+    if (fd.text && fd.text.length > 30000) {
+      UI.toast(S.lang === 'ko' ? '문서가 너무 길어 일부만 전송됩니다.' : 'Document is too long, only a portion will be processed.', 'warn');
+    }
     UI.showPb('AI 변환 중...');
-    const mdc = await aiConvert(file.name, fd, null, styleDef);
+    const mdc = await aiConvert(file.name, fd, null, styleDef, signal);
     
     const id = Date.now().toString();
     const docId = 'md_' + id;
@@ -488,17 +568,18 @@ async function processFile() {
     if (!S.raw) S.raw = [];
     S.raw.unshift(rawFile);
     S.md.unshift(doc);
-    
-    // Clear file input to allow re-uploading same file
-    document.getElementById('fi').value = '';
 
     Sidebar.render();
     UI.toast('변환 완료!', 'ok');
     UI.hidePb();
     UploadModal.close();
   } catch (e) {
-    console.error(e);
-    UI.toast('오류: ' + e.message, 'err');
+    if (e.name === 'AbortError' || e.message === 'Cancelled') {
+      console.log('File processing was gracefully cancelled by user.');
+    } else {
+      console.error(e);
+      UI.toast('오류: ' + e.message, 'err');
+    }
     UI.hidePb();
   }
 }

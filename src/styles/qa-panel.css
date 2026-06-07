@@ -11,11 +11,11 @@
 }
 
 .qa-panel.open {
-  height: 360px;
+  height: clamp(300px, 45vh, 400px);
 }
 
 .qa-panel.open.expanded {
-  height: 520px;
+  height: clamp(400px, 75vh, 600px);
 }
 
 .qa-header {

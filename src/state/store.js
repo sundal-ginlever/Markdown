@@ -2,11 +2,17 @@
  * Reactive State Store for DocVault
  */
 
+const proxyCache = new WeakMap();
+
 function makeReactive(obj, onNotify) {
   if (typeof obj !== 'object' || obj === null) return obj;
   if (obj instanceof File || obj instanceof Blob || obj instanceof Date || obj instanceof Set || obj instanceof Map) return obj;
   
-  return new Proxy(obj, {
+  if (proxyCache.has(obj)) {
+    return proxyCache.get(obj);
+  }
+  
+  const proxy = new Proxy(obj, {
     get(target, key) {
       const val = target[key];
       if (typeof val === 'object' && val !== null) {
@@ -25,6 +31,9 @@ function makeReactive(obj, onNotify) {
       return res;
     }
   });
+  
+  proxyCache.set(obj, proxy);
+  return proxy;
 }
 
 const listeners = new Set();
@@ -72,8 +81,8 @@ export const QA = makeReactive({
 export const SEARCH = makeReactive({
   query: '',
   filter: 'all',
-  activeHls: [],
   hlIdx: 0,
+  hlCount: 0
 }, notify);
 
 export function subscribe(fn) {

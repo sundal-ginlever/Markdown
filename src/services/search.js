@@ -4,6 +4,8 @@
 import { S, SEARCH } from '../state/store.js';
 
 export const SearchService = {
+  activeHls: [], // Local non-reactive DOM cache to prevent GC leakage and native Proxy wrapping
+
   /**
    * Search documents based on query and scoring
    */
@@ -30,12 +32,12 @@ export const SearchService = {
   },
 
   /**
-   * Build a search snippet for results
+   * Build a search snippet for results (XSS Safe)
    */
   buildSnippet(content, query, length = 150) {
     if (!content || !query) return '';
     const idx = content.toLowerCase().indexOf(query.toLowerCase());
-    if (idx === -1) return content.substring(0, length) + '...';
+    if (idx === -1) return this.escapeHtml(content.substring(0, length) + '...');
     
     const start = Math.max(0, idx - 50);
     const end = Math.min(content.length, idx + length);
@@ -43,7 +45,12 @@ export const SearchService = {
     if (start > 0) snippet = '...' + snippet;
     if (end < content.length) snippet += '...';
     
-    return snippet;
+    return this.escapeHtml(snippet);
+  },
+
+  escapeHtml(text) {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.replace(/[&<>"']/g, m => map[m]);
   },
 
   escapeRegExp(string) {
@@ -51,6 +58,7 @@ export const SearchService = {
   },
 
   applyHighlights(container, query) {
+    this.clearHighlights(container);
     if (!query) return;
     const filter = {
       acceptNode(node) {
@@ -97,41 +105,91 @@ export const SearchService = {
 
     // Collect highlights and update UI
     const marks = Array.from(container.querySelectorAll('mark.hl'));
-    SEARCH.activeHls = marks;
-    SEARCH.hlIdx = marks.length > 0 ? 0 : -1;
+    this.activeHls = marks;
+    
+    if (marks.length === 0) {
+      SEARCH.hlIdx = -1;
+      SEARCH.hlCount = 0;
+    } else {
+      SEARCH.hlCount = marks.length;
+      if (SEARCH.hlIdx >= marks.length || SEARCH.hlIdx < 0) {
+        SEARCH.hlIdx = 0;
+      }
+    }
     this.updateHighlightUI();
   },
 
   updateHighlightUI() {
-    const { activeHls, hlIdx } = SEARCH;
+    const { hlIdx } = SEARCH;
     const nav = document.getElementById('hl-nav');
     if (!nav) return;
-    if (activeHls.length === 0) {
+    
+    // Safety Filter: Keep only DOM-attached highlight elements
+    const validHls = this.activeHls.filter(hl => document.contains(hl));
+    if (validHls.length !== this.activeHls.length) {
+      this.activeHls = validHls;
+      SEARCH.hlCount = validHls.length;
+      if (validHls.length === 0) {
+        SEARCH.hlIdx = -1;
+        nav.style.display = 'none';
+        return;
+      }
+      if (SEARCH.hlIdx >= validHls.length || SEARCH.hlIdx < 0) {
+        SEARCH.hlIdx = 0;
+      }
+    }
+    
+    const currentHls = this.activeHls;
+    const currentIdx = SEARCH.hlIdx;
+    
+    if (currentHls.length === 0) {
       nav.style.display = 'none';
       return;
     }
-    nav.style.display = 'flex';
-    document.getElementById('hl-status').textContent = `${hlIdx + 1}/${activeHls.length}`;
     
-    activeHls.forEach((hl, i) => {
-      if (i === hlIdx) hl.classList.add('hl-active');
+    nav.style.display = 'flex';
+    document.getElementById('hl-status').textContent = `${currentIdx + 1}/${currentHls.length}`;
+    
+    currentHls.forEach((hl, i) => {
+      if (i === currentIdx) hl.classList.add('hl-active');
       else hl.classList.remove('hl-active');
     });
     
-    if (hlIdx >= 0 && activeHls[hlIdx]) {
-      activeHls[hlIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (currentIdx >= 0 && currentHls[currentIdx] && document.contains(currentHls[currentIdx])) {
+      currentHls[currentIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   },
 
+  clearHighlights(container) {
+    if (!container) return;
+    const marks = Array.from(container.querySelectorAll('mark.hl'));
+    marks.forEach(mark => {
+      const parent = mark.parentNode;
+      if (parent) {
+        while (mark.firstChild) {
+          parent.insertBefore(mark.firstChild, mark);
+        }
+        parent.removeChild(mark);
+      }
+    });
+    container.normalize();
+    
+    this.activeHls = [];
+    SEARCH.hlIdx = -1;
+    SEARCH.hlCount = 0;
+    const nav = document.getElementById('hl-nav');
+    if (nav) nav.style.display = 'none';
+  },
+
   nextHighlight() {
-    if (!SEARCH.activeHls.length) return;
-    SEARCH.hlIdx = (SEARCH.hlIdx + 1) % SEARCH.activeHls.length;
+    if (!this.activeHls.length) return;
+    SEARCH.hlIdx = (SEARCH.hlIdx + 1) % this.activeHls.length;
     this.updateHighlightUI();
   },
   
   prevHighlight() {
-    if (!SEARCH.activeHls.length) return;
-    SEARCH.hlIdx = (SEARCH.hlIdx - 1 + SEARCH.activeHls.length) % SEARCH.activeHls.length;
+    if (!this.activeHls.length) return;
+    SEARCH.hlIdx = (SEARCH.hlIdx - 1 + this.activeHls.length) % this.activeHls.length;
     this.updateHighlightUI();
   }
 };

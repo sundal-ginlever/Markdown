@@ -1,6 +1,7 @@
 /**
  * Internationalization (I18N) Module
  */
+import { S } from '../state/store.js';
 
 export const I18N = {
   cur: localStorage.getItem('dv_lang') || 'ko',
@@ -218,6 +219,9 @@ export function setLang(lang) {
   if (!I18N[lang]) return;
   I18N.cur = lang;
   localStorage.setItem('dv_lang', lang);
+  if (S) {
+    S.lang = lang;
+  }
   renderI18N();
 }
 
