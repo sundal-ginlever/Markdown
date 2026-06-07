@@ -225,6 +225,17 @@ function bindEvents() {
   document.getElementById('main-dz')?.addEventListener('click', () => document.getElementById('fi')?.click());
   document.getElementById('wlc-convert')?.addEventListener('click', processFile);
 
+  // Home mode toggle: upload a file vs. write text directly
+  document.querySelectorAll('.wlc-mode').forEach(b =>
+    b.addEventListener('click', () => setWelcomeMode(b.dataset.mode)));
+  document.getElementById('wlc-text-convert')?.addEventListener('click', processText);
+
+  // Help / usage guide modal
+  const openHelp = () => UI.toggleModal('help-mo', true);
+  document.getElementById('help-btn')?.addEventListener('click', openHelp);
+  document.getElementById('wlc-help-link')?.addEventListener('click', openHelp);
+  document.getElementById('help-close-btn')?.addEventListener('click', () => UI.toggleModal('help-mo', false));
+
   // Backdrop clicks to close modals
   document.querySelectorAll('.ov').forEach(ov => {
     ov.addEventListener('click', (e) => {
@@ -237,6 +248,8 @@ function bindEvents() {
           UI.toggleModal('cloud-mo', false);
         } else if (ov.id === 'reconv-mo') {
           UI.toggleModal('reconv-mo', false);
+        } else if (ov.id === 'help-mo') {
+          UI.toggleModal('help-mo', false);
         } else if (ov.id === 'cmd-pal') {
           ov.classList.remove('show');
         }
@@ -674,6 +687,91 @@ async function processFile() {
     }
     UI.hidePb();
     if (okCount > 0) Sidebar.render();
+  }
+}
+
+// Switch the home screen between file-upload and write-directly modes
+function setWelcomeMode(mode) {
+  const isText = mode === 'text';
+  document.querySelectorAll('.wlc-mode').forEach(b => b.classList.toggle('act', b.dataset.mode === mode));
+  const dz = document.getElementById('main-dz');
+  const box = document.getElementById('wlc-textbox');
+  const fileAction = document.getElementById('wlc-action');
+  const textAction = document.getElementById('wlc-text-action');
+  if (dz) dz.style.display = isText ? 'none' : '';
+  if (box) box.style.display = isText ? 'block' : 'none';
+  if (textAction) textAction.style.display = isText ? 'flex' : 'none';
+  // The file action only belongs in file mode, and only once a file is picked
+  if (fileAction) fileAction.style.display = (!isText && S.pendingFile) ? 'flex' : 'none';
+  if (isText) document.getElementById('wlc-text')?.focus();
+}
+
+// Derive a document title from the first meaningful line of free-form text
+function deriveTitle(text) {
+  const firstLine = (text.split('\n').find(l => l.trim()) || '').trim();
+  let t = firstLine.replace(/^#+\s*/, '').replace(/[\\/:*?"<>|]/g, '').trim();
+  if (t.length > 40) t = t.slice(0, 40).trim();
+  if (!t) {
+    const d = new Date().toISOString().slice(0, 10);
+    t = (S.lang === 'ko' ? '빠른 메모 ' : 'Quick note ') + d;
+  }
+  return t;
+}
+
+// Convert free-form text typed on the home screen into a styled document
+async function processText() {
+  const ta = document.getElementById('wlc-text');
+  const text = (ta?.value || '').trim();
+  const isKo = S.lang === 'ko';
+  if (!text) {
+    UI.toast(isKo ? '변환할 내용을 입력하세요' : 'Enter some text to convert', 'warn');
+    return;
+  }
+
+  const { UploadModal } = await import('./components/modals/uploadModal.js');
+  if (UploadModal.abortController) UploadModal.abortController.abort();
+  UploadModal.abortController = new AbortController();
+  const signal = UploadModal.abortController.signal;
+
+  const styleDef = STYLES.find(s => s.id === S.selectedStyle) || STYLES[0];
+  try {
+    UI.showPb(isKo ? 'AI 변환 중...' : 'Converting...');
+    const fd = { type: 'text', text, cnt: 0 };
+    const title = deriveTitle(text);
+    const mdc = await aiConvert(title + '.txt', fd, null, styleDef, signal);
+
+    const docId = 'md_' + Date.now().toString();
+    const doc = {
+      id: docId,
+      name: title + '.md',
+      rawId: docId,
+      content: mdc,
+      styleId: S.selectedStyle,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      version: 1
+    };
+
+    await IDB.saveDoc(doc, text, null, title + '.txt', 'text');
+    await SB.saveDoc(doc, { name: title + '.txt', ext: 'txt', content: text });
+
+    if (!S.raw) S.raw = [];
+    S.raw.unshift({ id: doc.id, name: title + '.txt', type: 'text' });
+    S.md.unshift(doc);
+
+    Sidebar.render();
+    UI.hidePb();
+    UI.toast(isKo ? '변환 완료!' : 'Converted!', 'ok');
+    if (ta) ta.value = '';
+    Sidebar.openDoc(docId);
+  } catch (e) {
+    if (e.name === 'AbortError' || e.message === 'Cancelled') {
+      console.log('Text conversion cancelled.');
+    } else {
+      console.error(e);
+      UI.toast('오류: ' + e.message, 'err');
+    }
+    UI.hidePb();
   }
 }
 
