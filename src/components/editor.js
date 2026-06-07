@@ -10,24 +10,18 @@ import { Router } from '../utils/router.js';
 
 export const Editor = {
   setMode(m) {
+    if (!S.activeDoc) return; // no document open → ignore (prevents stray panels)
     S.mode = m;
     const isEdit = m === 'edit';
 
-    // Exit original-source comparison on any explicit tab switch
-    const srcPane = document.getElementById('src-pane');
-    if (srcPane && srcPane.style.display !== 'none') {
-      srcPane.style.display = 'none';
-      document.getElementById('view-a')?.classList.remove('split');
-      document.getElementById('b-source')?.classList.remove('on');
-    }
-    document.getElementById('view-a').style.display = isEdit ? 'none' : 'block';
-    document.getElementById('edit-a').style.display = isEdit ? 'block' : 'none';
-    document.getElementById('b-view').classList.toggle('act', !isEdit);
-    document.getElementById('b-edit').classList.toggle('act', isEdit);
-    document.getElementById('b-save').style.display = isEdit ? 'block' : 'none';
-    
-    if (isEdit && S.activeDoc) {
-      document.getElementById('mdt').value = S.activeDoc.content;
+    UI.setLayout(isEdit ? 'edit' : 'view');
+    document.getElementById('b-view')?.classList.toggle('act', !isEdit);
+    document.getElementById('b-edit')?.classList.toggle('act', isEdit);
+    const saveBtn = document.getElementById('b-save');
+    if (saveBtn) saveBtn.style.display = isEdit ? 'block' : 'none';
+
+    if (isEdit) {
+      document.getElementById('mdt').value = S.activeDoc.content || '';
     }
   },
 
@@ -138,13 +132,12 @@ export const Editor = {
     S.activeDoc = null;
     S.mode = 'view';
     Router.navigate(null);
-    document.getElementById('doc-tb').style.display = 'none';
+    // Single source of truth: show only the home screen, hide toolbar + doc areas
+    UI.setLayout('home');
     const mdv = document.getElementById('mdv');
     if (mdv) mdv.innerHTML = '';
-    const wlc = document.getElementById('wlc-a');
-    if (wlc) wlc.style.display = 'flex';
-    document.getElementById('edit-a').style.display = 'none';
-    document.getElementById('view-a').style.display = 'block';
+    const dpName = document.getElementById('dp-name');
+    if (dpName) dpName.textContent = '—';
 
     // Reset search highlights and hide its floating panel
     import('../services/search.js').then(({ SearchService }) => {

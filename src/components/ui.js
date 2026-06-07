@@ -101,5 +101,28 @@ export const UI = {
   toggleModal(id, show) {
     const el = document.getElementById(id);
     if (el) el.classList.toggle('show', show);
+  },
+
+  // Single source of truth for which content area is shown. Guarantees exactly
+  // one of home/view/edit is visible (and the toolbar only when a doc is open),
+  // so the areas can never stack on top of each other.
+  setLayout(mode) { // 'home' | 'view' | 'edit'
+    const disp = {
+      'doc-tb': mode === 'home' ? 'none' : 'flex',
+      'wlc-a': mode === 'home' ? 'flex' : 'none',
+      'view-a': mode === 'view' ? 'block' : 'none',
+      'edit-a': mode === 'edit' ? 'block' : 'none'
+    };
+    for (const id in disp) {
+      const el = document.getElementById(id);
+      if (el) el.style.display = disp[id];
+    }
+    // Collapse the source-compare split whenever we're not in plain view
+    if (mode !== 'view') {
+      const sp = document.getElementById('src-pane');
+      if (sp) sp.style.display = 'none';
+      document.getElementById('view-a')?.classList.remove('split');
+      document.getElementById('b-source')?.classList.remove('on');
+    }
   }
 };
