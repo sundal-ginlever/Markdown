@@ -9,7 +9,7 @@ export default defineConfig({
         name: 'DocVault v2.0',
         short_name: 'DocVault',
         description: 'Professional AI-powered Document Vault',
-        theme_color: '#0a0a0b',
+        theme_color: '#ffffff',
         icons: [
           {
             src: 'pwa-192x192.png',

@@ -53,6 +53,8 @@ export async function loadLocalData() {
     const { Editor } = await import('./components/editor.js');
     Editor.close();
   }
+
+  updateStorageInfo();
 }
 
 // --- Initialization ---
@@ -251,6 +253,9 @@ function bindEvents() {
 
   // Close the original-source comparison pane
   document.getElementById('src-close-btn')?.addEventListener('click', () => Viewer.toggleSource());
+
+  // Close the current document and return to the home screen
+  document.getElementById('b-home')?.addEventListener('click', () => Editor.close());
 
   // PWA install: show the titlebar button only when the browser offers install
   let deferredInstallPrompt = null;
@@ -561,7 +566,8 @@ function bindEvents() {
         Editor.close();
         
         if (window.updateSyncStatusUI) window.updateSyncStatusUI();
-        
+        updateStorageInfo();
+
         UI.toast(isKo ? '전체 데이터가 초기화되었습니다' : 'All data cleared successfully.', 'ok');
       } catch (err) {
         console.error('Clear all error:', err);
@@ -714,6 +720,7 @@ async function processFile() {
     }
     // Open the freshly converted document so the result is visible immediately
     if (lastDocId) Sidebar.openDoc(lastDocId);
+    updateStorageInfo();
   } catch (e) {
     if (e.name === 'AbortError' || e.message === 'Cancelled') {
       console.log('File processing was gracefully cancelled by user.');
@@ -730,6 +737,24 @@ async function processFile() {
 function providerLabel(p) {
   return ({ claude: 'Claude', gpt4: 'GPT', gemini: 'Gemini', local: 'Custom' })[p] || p;
 }
+
+// Sidebar storage-usage indicator (doc count + approximate IndexedDB usage)
+async function updateStorageInfo() {
+  const el = document.getElementById('sb-storage');
+  if (!el) return;
+  const isKo = S.lang === 'ko';
+  const docCount = S.md.length;
+  let usageStr = '';
+  try {
+    if (navigator.storage?.estimate) {
+      const { usage } = await navigator.storage.estimate();
+      const mb = (usage || 0) / (1024 * 1024);
+      usageStr = ' · ' + (mb < 1 ? `${(mb * 1024).toFixed(0)} KB` : `${mb.toFixed(1)} MB`);
+    }
+  } catch (_) { /* estimate unsupported */ }
+  el.textContent = `${docCount}${isKo ? '개 문서' : ' docs'}${usageStr}`;
+}
+window.updateStorageInfo = updateStorageInfo;
 function syncEngineBadge() {
   const badge = document.getElementById('qa-model-badge');
   if (badge) badge.textContent = providerLabel(S.ai.provider);
@@ -809,6 +834,7 @@ async function processText() {
     UI.toast((isKo ? '변환 완료' : 'Converted') + ' · ' + providerLabel(S.ai.provider), 'ok');
     if (ta) ta.value = '';
     Sidebar.openDoc(docId);
+    updateStorageInfo();
   } catch (e) {
     if (e.name === 'AbortError' || e.message === 'Cancelled') {
       console.log('Text conversion cancelled.');

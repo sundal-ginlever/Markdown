@@ -44,10 +44,10 @@ export const Editor = {
     S.activeDoc.updatedAt = docToSave.updatedAt;
 
     // Return to preview right away so Save always visibly responds, even if a
-    // later (cloud) step fails. The textarea value is already captured above.
+    // later (render or cloud) step fails. The textarea value is captured above.
     if (S.activeDoc && S.activeDoc.id === docToSave.id) {
-      Viewer.render();
       this.setMode('view');
+      try { Viewer.render(); } catch (err) { console.error('Render after save failed:', err); }
     }
 
     try {

@@ -315,6 +315,7 @@ export const Sidebar = {
       Editor.close();
     }
     this.render();
+    if (window.updateStorageInfo) window.updateStorageInfo();
   },
 
   // --- Folder Management Methods ---
