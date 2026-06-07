@@ -118,7 +118,11 @@ function buildPrompt(fname, fd, textOverride, styleDef) {
     isTruncated = true;
   }
 
-  return `${systemPrompt}
+  const langDirective = S.lang === 'ko'
+    ? '\n\n[OUTPUT LANGUAGE] Write the ENTIRE output document in Korean (한국어), regardless of the source language. Keep code, identifiers, URLs, and proper nouns as-is.'
+    : '\n\n[OUTPUT LANGUAGE] Write the entire output document in English.';
+
+  return `${systemPrompt}${langDirective}
 ${isTruncated ? '\n[SYSTEM WARNING: The original document was too long and has been truncated. Please convert the provided portion and note that it is incomplete.]\n' : ''}
 ---
 CONTENT TO CONVERT:

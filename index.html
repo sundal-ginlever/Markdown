@@ -36,6 +36,7 @@
 
   <button class="btn-up" id="btn-up" data-i18n-aria="aria_upload">⊕ <span data-i18n="upload_btn">문서 변환</span></button>
 
+  <button class="tb-gear" id="pwa-install-btn" title="앱 설치" aria-label="앱 설치" style="display:none">⬇️</button>
   <button class="tb-gear" id="help-btn" title="사용 가이드" aria-label="사용 가이드">?</button>
 
   <div class="tb-settings-wrap">
@@ -165,12 +166,6 @@
       </div>
     </div>
 
-    <div class="pwa-bar" id="pwa-bar">
-      <span data-i18n="pwa_msg">📱 앱으로 설치하면 오프라인에서도 사용할 수 있습니다</span>
-      <button class="pwa-install-btn" data-i18n="btn_install">⬇️ 설치</button>
-      <button class="pwa-close" data-i18n-aria="aria_close">✕</button>
-    </div>
-
     <div class="pb" id="pb"><div class="sp"></div><span id="pb-txt">Processing...</span></div>
     <div id="pb-txt-sub" style="font-size:10px;color:var(--t3);margin-top:4px"></div>
 
@@ -212,7 +207,7 @@
     </div>
     <div class="da" id="view-a" style="display:none">
       <div class="src-pane" id="src-pane" style="display:none">
-        <div class="src-h"><span data-i18n="src_title">📄 원본</span></div>
+        <div class="src-h"><span data-i18n="src_title">📄 원본</span><button class="src-close" id="src-close-btn" title="원본 닫기" aria-label="원본 닫기">✕</button></div>
         <pre id="src-text"></pre>
       </div>
       <div class="mdv" id="mdv"></div>
@@ -351,7 +346,11 @@
       <h3>4. 정리 & 찾기 (왼쪽)</h3>
       <p>🔍 검색 + 필터 칩·정렬, 📁+ 폴더 생성, 하단 ⬇️ 전체 백업(ZIP) / 🗑 전체 초기화(주의).</p>
 
-      <h3>5. 비용 아끼기 💰</h3>
+      <h3>5. AI 엔진 & 저장 위치</h3>
+      <p>상단 <b>AI 엔진</b> 드롭다운에서 고른 엔진으로 변환됩니다(변환 완료 알림에 사용된 엔진 표시). 입력한 키가 있는 엔진을 선택하세요.</p>
+      <p>입력한 <b>원본</b>과 <b>변환된 문서</b>는 기본적으로 <b>이 브라우저(IndexedDB)</b>에 저장됩니다. ⚙️ → ☁️ 클라우드를 설정하면 본인 <b>Supabase</b>에도 동기화됩니다. 출력 언어는 상단 <b>KO/EN</b> 토글을 따릅니다.</p>
+
+      <h3>6. 비용 아끼기 💰</h3>
       <ul>
         <li>기본 모델 <b>Haiku 4.5</b> 유지 — 품질 대비 가장 저렴</li>
         <li>일괄 변환 전 <b>예상 비용</b>을 확인하고 진행</li>

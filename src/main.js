@@ -236,6 +236,41 @@ function bindEvents() {
   document.getElementById('wlc-help-link')?.addEventListener('click', openHelp);
   document.getElementById('help-close-btn')?.addEventListener('click', () => UI.toggleModal('help-mo', false));
 
+  // AI engine selector (titlebar) — now actually drives the active provider
+  const aiSel = document.getElementById('ai-sel');
+  if (aiSel) {
+    aiSel.value = S.ai.provider;
+    syncEngineBadge();
+    aiSel.addEventListener('change', async (e) => {
+      S.ai.provider = e.target.value;
+      try { localStorage.setItem('dv_ai', await encrypt(JSON.stringify(S.ai))); } catch (_) {}
+      syncEngineBadge();
+      UI.toast((S.lang === 'ko' ? 'AI 엔진: ' : 'AI engine: ') + providerLabel(S.ai.provider), 'ok');
+    });
+  }
+
+  // Close the original-source comparison pane
+  document.getElementById('src-close-btn')?.addEventListener('click', () => Viewer.toggleSource());
+
+  // PWA install: show the titlebar button only when the browser offers install
+  let deferredInstallPrompt = null;
+  const installBtn = document.getElementById('pwa-install-btn');
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (installBtn) installBtn.style.display = '';
+  });
+  installBtn?.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    installBtn.style.display = 'none';
+  });
+  window.addEventListener('appinstalled', () => {
+    if (installBtn) installBtn.style.display = 'none';
+  });
+
   // Backdrop clicks to close modals
   document.querySelectorAll('.ov').forEach(ov => {
     ov.addEventListener('click', (e) => {
@@ -671,7 +706,8 @@ async function processFile() {
     UploadModal.close();
 
     if (okCount > 0) {
-      UI.toast(multi ? `${okCount}${isKo ? '개 문서 변환 완료!' : ' documents converted!'}` : (isKo ? '변환 완료!' : 'Converted!'), 'ok');
+      const eng = providerLabel(S.ai.provider);
+      UI.toast((multi ? `${okCount}${isKo ? '개 변환 완료' : ' converted'}` : (isKo ? '변환 완료' : 'Converted')) + ` · ${eng}`, 'ok');
     }
     if (failed.length) {
       UI.toast((isKo ? '변환 실패: ' : 'Failed: ') + failed.join(', '), 'err');
@@ -688,6 +724,15 @@ async function processFile() {
     UI.hidePb();
     if (okCount > 0) Sidebar.render();
   }
+}
+
+// Human-readable label for the active AI provider
+function providerLabel(p) {
+  return ({ claude: 'Claude', gpt4: 'GPT', gemini: 'Gemini', local: 'Custom' })[p] || p;
+}
+function syncEngineBadge() {
+  const badge = document.getElementById('qa-model-badge');
+  if (badge) badge.textContent = providerLabel(S.ai.provider);
 }
 
 // Switch the home screen between file-upload and write-directly modes
@@ -761,7 +806,7 @@ async function processText() {
 
     Sidebar.render();
     UI.hidePb();
-    UI.toast(isKo ? '변환 완료!' : 'Converted!', 'ok');
+    UI.toast((isKo ? '변환 완료' : 'Converted') + ' · ' + providerLabel(S.ai.provider), 'ok');
     if (ta) ta.value = '';
     Sidebar.openDoc(docId);
   } catch (e) {

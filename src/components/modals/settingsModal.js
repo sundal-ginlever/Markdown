@@ -149,6 +149,12 @@ export const SettingsModal = {
       S.ai.provider = this.tempAi.provider;
       S.ai.localUrl = this.tempAi.localUrl;
     }
+
+    // Keep the titlebar engine selector and Q&A badge in sync with the saved provider
+    const sel = document.getElementById('ai-sel');
+    if (sel) sel.value = S.ai.provider;
+    const badge = document.getElementById('qa-model-badge');
+    if (badge) badge.textContent = ({ claude: 'Claude', gpt4: 'GPT', gemini: 'Gemini', local: 'Custom' })[S.ai.provider] || S.ai.provider;
     
     // Encrypt with AES-GCM via Web Crypto API before storing
     try {
