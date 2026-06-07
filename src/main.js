@@ -91,7 +91,7 @@ async function init() {
   // Migrate stale/retired Claude model IDs saved by older versions (would 404)
   const CURRENT_CLAUDE_MODELS = ['claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
   if (!CURRENT_CLAUDE_MODELS.includes(S.ai.models.claude)) {
-    S.ai.models.claude = 'claude-opus-4-8';
+    S.ai.models.claude = 'claude-haiku-4-5';
   }
 
   // Initialize Services
@@ -549,12 +549,52 @@ async function extractFileData(file, signal) {
   });
 }
 
+// Rough pre-conversion cost/token estimate so users aren't surprised by bulk runs.
+// Prices are USD per 1M tokens [input, output]; only shown for models with known pricing.
+const MODEL_PRICES = {
+  'claude-haiku-4-5': [1, 5],
+  'claude-sonnet-4-6': [3, 15],
+  'claude-opus-4-8': [5, 25],
+  'gpt-5.5': [5, 30]
+};
+
+function estimateConversion(files, model) {
+  let inTok = 0, outTok = 0;
+  for (const f of files) {
+    // App truncates source text at 30,000 chars (~7,500 tokens); size/4 ≈ chars→tokens
+    inTok += Math.min(Math.ceil(f.size / 4), 7500) + 400; // +system prompt
+    outTok += 2500; // typical converted-markdown output
+  }
+  const price = MODEL_PRICES[model];
+  let costText = null;
+  if (price) {
+    const cost = (inTok * price[0] + outTok * price[1]) / 1e6;
+    costText = '$' + cost.toFixed(cost < 0.1 ? 3 : 2);
+  }
+  return { tokens: inTok + outTok, costText };
+}
+
 async function processFile() {
   const files = (S.pendingFiles && S.pendingFiles.length)
     ? Array.from(S.pendingFiles)
     : (S.pendingFile ? [S.pendingFile] : []);
   if (!files.length) return;
   const isKo = S.lang === 'ko';
+
+  // Pre-conversion estimate + confirmation for bulk or large jobs
+  const model = S.ai.models[S.ai.provider];
+  const needsConfirm = files.length > 1 || files.some(f => f.size > 200 * 1024);
+  if (needsConfirm) {
+    const est = estimateConversion(files, model);
+    const tokStr = est.tokens.toLocaleString();
+    const costPart = est.costText
+      ? (isKo ? `\n예상 비용: 약 ${est.costText}` : `\nEst. cost: ~${est.costText}`)
+      : (isKo ? '\n(이 모델은 비용 추정을 지원하지 않습니다)' : '\n(cost estimate unavailable for this model)');
+    const msg = isKo
+      ? `${files.length}개 파일을 변환합니다.\n모델: ${model}\n예상 토큰: 약 ${tokStr} (대략치)${costPart}\n\n진행할까요?`
+      : `Converting ${files.length} file(s).\nModel: ${model}\nEst. tokens: ~${tokStr} (rough)${costPart}\n\nProceed?`;
+    if (!confirm(msg)) return;
+  }
 
   // Safe dynamic import to get the isolated UploadModal controller
   const { UploadModal } = await import('./components/modals/uploadModal.js');

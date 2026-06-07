@@ -16,7 +16,7 @@ export async function aiConvert(fname, fd, textOverride, styleDef, signal) {
       headers: h,
       signal: signal,
       body: JSON.stringify({
-        model: S.ai.models.claude || 'claude-opus-4-8',
+        model: S.ai.models.claude || 'claude-haiku-4-5',
         max_tokens: 4096,
         messages: [{ role: 'user', content: prompt }]
       })
@@ -177,7 +177,9 @@ Instructions:
       body: JSON.stringify({
         model: S.ai.models.claude,
         max_tokens: 1000,
-        system: systemPrompt,
+        // Prompt caching: the document context is identical across every question
+        // in a session, so cache it — repeated reads cost ~1/10 of full input price.
+        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
         messages
       })
     });
