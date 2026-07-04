@@ -24,14 +24,7 @@ export const UI = {
           return;
         }
 
-        // 3. Close Q&A Panel if active
-        const qaPanel = document.getElementById('qa-panel');
-        if (qaPanel && qaPanel.classList.contains('open')) {
-          import('./qaPanel.js').then(({ QAPanel }) => QAPanel.toggle());
-          return;
-        }
-
-        // 4. Dismiss other open modals safely
+        // 3. Dismiss other open modals safely
         const otherModals = Array.from(document.querySelectorAll('.ov.show')).filter(el => el.id !== 'cmd-pal');
         if (otherModals.length > 0) {
           otherModals.forEach(el => {

@@ -5,7 +5,6 @@ import { S, SEARCH } from '../state/store.js';
 import { IDB } from '../services/db.js';
 import { UI } from './ui.js';
 import { Viewer } from './viewer.js';
-import { SB } from '../services/supabase.js';
 import { Router } from '../utils/router.js';
 
 export const Editor = {
@@ -51,8 +50,6 @@ export const Editor = {
       await IDB.put('docs', docToSave);
       const logEntry = { docId: docToSave.id, ts: Date.now(), msg: '문서 내용 직접 편집', delta };
       await IDB.put('logs', logEntry);
-      await SB.saveLog(docToSave.id, logEntry);
-      await SB.saveDoc(docToSave);
       if (S.logOpen) {
         import('./logPanel.js').then(({ LogPanel }) => LogPanel.render());
       }
@@ -85,31 +82,22 @@ export const Editor = {
       const usedPaths = new Set();
       
       S.md.forEach(doc => {
-        let folderName = '';
-        if (doc.folderId) {
-          const folderObj = S.folders.find(f => f.id === doc.folderId);
-          if (folderObj && folderObj.name) {
-            folderName = folderObj.name.replace(/[\\/:*?"<>|]/g, '_').trim();
-          }
-        }
-
         let baseName = doc.name || 'document';
         if (!baseName.endsWith('.md')) {
           baseName += '.md';
         }
         baseName = baseName.replace(/[\\/:*?"<>|]/g, '_').trim();
 
-        let relativePath = folderName ? `${folderName}/${baseName}` : baseName;
+        let relativePath = baseName;
         let counter = 1;
-        
+
         while (usedPaths.has(relativePath.toLowerCase())) {
           const extIdx = baseName.lastIndexOf('.md');
           const cleanName = baseName.substring(0, extIdx);
-          const newBaseName = `${cleanName} (${counter}).md`;
-          relativePath = folderName ? `${folderName}/${newBaseName}` : newBaseName;
+          relativePath = `${cleanName} (${counter}).md`;
           counter++;
         }
-        
+
         usedPaths.add(relativePath.toLowerCase());
         zip.file(relativePath, doc.content || '');
       });

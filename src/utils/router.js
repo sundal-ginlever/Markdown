@@ -32,12 +32,6 @@ export const Router = {
     if (docId) {
       const doc = S.md.find(d => d.id === docId);
       if (doc) {
-        // Abort running QA requests on document transition
-        const { QAPanel } = await import('../components/qaPanel.js');
-        if (QAPanel.abortController) {
-          QAPanel.abortController.abort();
-        }
-
         // Safety Guard: Auto-Save current document editing progress before navigating away
         if (S.mode === 'edit' && S.activeDoc && S.activeDoc.id !== docId) {
           const { Editor } = await import('../components/editor.js');
@@ -59,7 +53,6 @@ export const Router = {
         S.activeDoc = doc;
         Viewer.render();
         Sidebar.render();
-        QAPanel.render();
 
         // Sync LogPanel reactively if it is currently open
         if (S.logOpen) {
@@ -107,7 +100,6 @@ export const Router = {
 
   async loadSharedDoc(id) {
     console.log('Loading shared doc:', id);
-    // Logic to fetch shared doc from Supabase public table or similar
-    // This would call SB.fetchPublicDoc(id)
+    // Not implemented — no cloud backend to fetch a shared document from.
   }
 };

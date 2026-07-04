@@ -1,18 +1,16 @@
 /**
  * Main Entry Point for DocVault
  */
-import { S, STYLES, SEARCH, subscribe } from './state/store.js';
+import { S, STYLES, SEARCH } from './state/store.js';
 import { I18N, t, setLang, renderI18N } from './utils/i18n.js';
 import { decrypt, encrypt } from './utils/crypto.js';
 import { IDB } from './services/db.js';
-import { SB } from './services/supabase.js';
 import { aiConvert } from './services/ai.js';
 import { parseSheet, sheetsToText } from './utils/xlsxExtractor.js';
 import { extractPdf } from './utils/pdfExtractor.js';
 import { extractDocx } from './utils/docxExtractor.js';
 
 // Services
-import { RealtimeService } from './services/realtime.js';
 import { Router } from './utils/router.js';
 import { SearchService } from './services/search.js';
 
@@ -21,33 +19,21 @@ import { UI } from './components/ui.js';
 import { Sidebar } from './components/sidebar.js';
 import { Viewer } from './components/viewer.js';
 import { Editor } from './components/editor.js';
-import { QAPanel } from './components/qaPanel.js';
 import { UploadModal } from './components/modals/uploadModal.js';
 import { SettingsModal } from './components/modals/settingsModal.js';
-import { CloudModal } from './components/modals/cloudModal.js';
 import { LogPanel } from './components/logPanel.js';
 
 // --- Local Data Loader for Database Partitioning Switch ---
 export async function loadLocalData() {
   const docs = await IDB.loadDocs();
   const rawFiles = await IDB.getRawMetadata();
-  const folders = await IDB.getAll('folders');
-  
-  S.folders = folders || [];
+
   S.md = docs.sort((a, b) => b.createdAt - a.createdAt);
   S.raw = rawFiles.map(r => ({ id: r.id, name: r.name || 'Original File', type: r.type }));
-  
-  // Populate S.docFolder from loaded docs
-  S.docFolder = {};
-  S.md.forEach(d => {
-    if (d.folderId) {
-      S.docFolder[d.id] = d.folderId;
-    }
-  });
 
   const { Sidebar } = await import('./components/sidebar.js');
   Sidebar.render();
-  
+
   // Close active document reactively if it's no longer present in the newly switched database
   if (S.activeDoc && !S.md.find(d => d.id === S.activeDoc.id)) {
     const { Editor } = await import('./components/editor.js');
@@ -97,101 +83,24 @@ async function init() {
   }
 
   // Initialize Services
-  const sbClient = await SB.init();
-  if (sbClient && SB.user) {
-    await IDB.switchUser(SB.user.id);
-  } else {
-    await IDB.init();
-  }
+  await IDB.init();
   await IDB.migrateFromLocalStorage('docvault_data', t, UI.showPb, UI.hidePb, UI.toast);
-  if (sbClient) {
-    RealtimeService.subscribe();
-    if (SB.user) {
-      SB.pullSync();
-    }
-  }
 
-  // Dynamic Sync Status UI Updater
-  window.updateSyncStatusUI = function() {
-    const dot = document.getElementById('sync-dot');
-    const lbl = document.getElementById('sync-lbl');
-    if (!dot || !lbl) return;
-    const isKo = S.lang === 'ko';
-    if (!navigator.onLine) {
-      dot.className = 'sync-dot offline';
-      lbl.textContent = isKo ? '오프라인' : 'Offline';
-      lbl.title = isKo ? '네트워크가 끊김. 연결 시 자동 동기화됩니다.' : 'Network disconnected. Will sync when restored.';
-      return;
-    }
-    if (SB.client && SB.user) {
-      dot.className = 'sync-dot on';
-      lbl.textContent = SB.user.email.split('@')[0];
-      lbl.title = isKo ? `로그인 계정: ${SB.user.email} (온라인)` : `Logged in: ${SB.user.email} (Online)`;
-    } else {
-      dot.className = 'sync-dot off';
-      lbl.textContent = '';
-      lbl.title = isKo ? '클라우드 비활성화됨' : 'Cloud sync inactive';
-    }
-  };
-
-  // Listen to network status transitions
-  window.addEventListener('online', () => {
-    window.updateSyncStatusUI();
-    if (SB.client && SB.user) {
-      UI.toast(S.lang === 'ko' ? '인터넷에 다시 연결되었습니다. 동기화를 진행합니다.' : 'Connection restored. Syncing changes...', 'ok');
-      SB.processQueue();
-      
-      // Auto-Reconnect Realtime Socket Subscription on network restoration
-      import('./services/realtime.js').then(({ RealtimeService }) => {
-        RealtimeService.subscribe();
-      }).catch(e => console.warn('Failed to auto-reconnect realtime channel:', e));
-    }
-  });
-  window.addEventListener('offline', () => {
-    window.updateSyncStatusUI();
-    UI.toast(S.lang === 'ko' ? '오프라인 모드입니다. 변경사항은 로컬에 임시 저장됩니다.' : 'Offline mode. Changes will be saved locally.', 'warn');
-  });
-
-  // Render initial status
-  window.updateSyncStatusUI();
-  
   // Component Initializations
   UI.initGlobal();
   Sidebar.init();
   UploadModal.init();
   SettingsModal.init();
-  CloudModal.init();
   renderI18N();
-  
+
   bindEvents();
 
   // Initial Data Fetch
   await loadLocalData();
-  
+
   Router.init();
 
-  // Watch Realtime Status & Update Sync UI
-  subscribe((state) => {
-    updateRTUI(state.rtStatus);
-    if (window.updateSyncStatusUI) window.updateSyncStatusUI();
-  });
-
   console.log('DocVault Ready.');
-}
-
-function updateRTUI(status) {
-  const badge = document.getElementById('rt-badge');
-  const dot = badge?.querySelector('.rt-pulse');
-  if (!badge || !dot) return;
-
-  badge.className = `rt-badge ${status}`;
-  if (status === 'connected') {
-    badge.title = '실시간 동기화 활성 (연결됨)';
-  } else if (status === 'connecting') {
-    badge.title = '실시간 동기화 연결 중...';
-  } else {
-    badge.title = '실시간 동기화 비활성 (연결 끊김)';
-  }
 }
 
 function bindEvents() {
@@ -284,8 +193,6 @@ function bindEvents() {
           import('./components/modals/uploadModal.js').then(({ UploadModal }) => UploadModal.close());
         } else if (ov.id === 'key-mo') {
           SettingsModal.close();
-        } else if (ov.id === 'cloud-mo') {
-          UI.toggleModal('cloud-mo', false);
         } else if (ov.id === 'reconv-mo') {
           UI.toggleModal('reconv-mo', false);
         } else if (ov.id === 'help-mo') {
@@ -297,14 +204,6 @@ function bindEvents() {
     });
   });
   
-  // New Folder Creation
-  document.querySelector('.btn-new-f')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    import('./components/sidebar.js').then(({ Sidebar }) => {
-      Sidebar.createFolder().catch(err => console.error('Failed to create folder:', err));
-    });
-  });
-
   document.querySelectorAll('.lang-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const l = btn.dataset.lang;
@@ -366,18 +265,6 @@ function bindEvents() {
     LogPanel.toggle(false);
   });
 
-  // Favorites Toggle
-  const toggleFav = () => {
-    if (!S.activeDoc) return;
-    const id = S.activeDoc.id;
-    if (S.favorites.includes(id)) S.favorites = S.favorites.filter(x => x !== id);
-    else S.favorites = [...S.favorites, id];
-    localStorage.setItem('dv_favs', JSON.stringify(S.favorites));
-    Sidebar.render();
-    Viewer.renderFavBtn();
-  };
-  document.getElementById('btn-fav-doc')?.addEventListener('click', toggleFav);
-
   // Command Palette
   let cmdSelIdx = 0;
   let currentFilteredCmds = [];
@@ -400,7 +287,6 @@ function bindEvents() {
     const cmds = [
       { t: '새로운 문서 변환 시작', icon: '⚡', action: () => UI.toggleModal('up-mo', true) },
       { t: 'AI 프로바이더 설정', icon: '🔑', action: () => UI.toggleModal('key-mo', true) },
-      { t: '클라우드 설정', icon: '☁️', action: () => UI.toggleModal('cloud-mo', true) },
       ...S.md.map(d => ({ t: `문서 열기: ${d.name}`, icon: '🗒', action: () => Sidebar.openDoc(d.id) }))
     ];
     
@@ -489,8 +375,6 @@ function bindEvents() {
         await IDB.put('docs', S.activeDoc);
         const logEntry = { docId: S.activeDoc.id, ts: Date.now(), msg: `문서 이름 변경: ${nw}` };
         await IDB.put('logs', logEntry);
-        await SB.saveDoc(S.activeDoc);
-        await SB.saveLog(S.activeDoc.id, logEntry);
         Sidebar.render();
       }
       nameEl.textContent = S.activeDoc.name;
@@ -511,20 +395,6 @@ function bindEvents() {
   };
   document.getElementById('dp-rename-btn')?.addEventListener('click', triggerRename);
   document.getElementById('dp-name')?.addEventListener('dblclick', triggerRename);
-
-  // Q&A Panel
-  document.getElementById('b-qa')?.addEventListener('click', () => QAPanel.toggle());
-  document.getElementById('qa-close-btn')?.addEventListener('click', () => QAPanel.toggle());
-  document.getElementById('qa-send')?.addEventListener('click', () => QAPanel.ask());
-  document.getElementById('qa-clear-btn')?.addEventListener('click', () => QAPanel.clearHistory());
-  const qaInp = document.getElementById('qa-input');
-  qaInp?.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); QAPanel.ask(); }
-  });
-  qaInp?.addEventListener('input', () => {
-    qaInp.style.height = 'auto';
-    qaInp.style.height = Math.min(120, qaInp.scrollHeight) + 'px';
-  });
 
   // Conversion-experience actions (Phase 2)
   document.getElementById('b-source')?.addEventListener('click', () => Viewer.toggleSource());
@@ -551,21 +421,14 @@ function bindEvents() {
           IDB.clear('docs'),
           IDB.clear('raw'),
           IDB.clear('logs'),
-          IDB.clear('folders'),
-          IDB.clear('sync_queue')
+          IDB.clear('folders')
         ]);
         S.md = [];
         S.raw = [];
-        S.folders = [];
         S.activeDoc = null;
-        S.favorites = [];
-        localStorage.removeItem('dv_favs');
-        S.docFolder = {};
-        
+
         Sidebar.render();
         Editor.close();
-        
-        if (window.updateSyncStatusUI) window.updateSyncStatusUI();
         updateStorageInfo();
 
         UI.toast(isKo ? '전체 데이터가 초기화되었습니다' : 'All data cleared successfully.', 'ok');
@@ -680,7 +543,6 @@ async function processFile() {
         const mdc = await aiConvert(file.name, fd, null, styleDef, signal);
 
         const docId = 'md_' + Date.now().toString() + '_' + i;
-        const ext = file.name.split('.').pop().toLowerCase();
         const doc = {
           id: docId,
           name: file.name.replace(/\.[^.]+$/, '') + '.md',
@@ -693,7 +555,6 @@ async function processFile() {
         };
 
         await IDB.saveDoc(doc, fd.text, null, file.name, fd.type);
-        await SB.saveDoc(doc, { name: file.name, ext, content: fd.text });
 
         if (!S.raw) S.raw = [];
         S.raw.unshift({ id: doc.id, name: file.name, type: fd.type });
@@ -823,7 +684,6 @@ async function processText() {
     };
 
     await IDB.saveDoc(doc, text, null, title + '.txt', 'text');
-    await SB.saveDoc(doc, { name: title + '.txt', ext: 'txt', content: text });
 
     if (!S.raw) S.raw = [];
     S.raw.unshift({ id: doc.id, name: title + '.txt', type: 'text' });

@@ -38,7 +38,7 @@ function makeReactive(obj, onNotify) {
 
 const listeners = new Set();
 function notify() {
-  listeners.forEach(fn => fn(S, QA, SEARCH));
+  listeners.forEach(fn => fn(S, SEARCH));
 }
 
 export const S = makeReactive({
@@ -50,14 +50,9 @@ export const S = makeReactive({
   logOpen: false,
   pendingFile: null,
   pendingFiles: null,
-  rtStatus: 'disconnected', // 'connected' | 'disconnected' | 'connecting'
   selectedStyle: localStorage.getItem('dv_style') || 'dev',
   secOpen: { raw: true, md: true },
   lang: localStorage.getItem('dv_lang') || 'ko',
-  folders: [],
-  docFolder: {},
-  favorites: (() => { try { return JSON.parse(localStorage.getItem('dv_favs') || '[]'); } catch { return []; } })(),
-  docTags: (() => { try { return JSON.parse(localStorage.getItem('dv_tags') || '{}'); } catch { return {}; } })(),
   ai: {
     provider: 'claude',
     keys: { claude: '', gpt4: '', gemini: '', local: '' },
@@ -70,13 +65,6 @@ export const S = makeReactive({
     localUrl: ''
   },
   sort: 'new'
-}, notify);
-
-export const QA = makeReactive({
-  history: (() => { try { return JSON.parse(localStorage.getItem('dv_qa_hist') || '{}'); } catch { return {}; } })(),
-  activeDocId: null,
-  loading: false,
-  expanded: false,
 }, notify);
 
 export const SEARCH = makeReactive({

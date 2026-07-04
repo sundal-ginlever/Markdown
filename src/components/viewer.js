@@ -117,8 +117,6 @@ export const Viewer = {
     document.getElementById('view-a')?.classList.remove('split');
     document.getElementById('b-source')?.classList.remove('on');
 
-    this.renderFavBtn();
-
     const badge = document.getElementById('doc-style-badge');
     if (badge && S.activeDoc) {
       import('../state/store.js').then(({ STYLES }) => {
@@ -172,15 +170,6 @@ export const Viewer = {
     btn?.classList.add('on');
   },
 
-  renderFavBtn() {
-    if (!S.activeDoc) return;
-    const btn = document.getElementById('btn-fav-doc');
-    if (!btn) return;
-    const isFav = S.favorites.includes(S.activeDoc.id);
-    btn.textContent = isFav ? '★' : '☆';
-    btn.style.color = isFav ? 'gold' : 'var(--t3)';
-  },
-
   openReconvModal() {
     if (!S.activeDoc) return;
     import('../state/store.js').then(({ STYLES }) => {
@@ -223,12 +212,11 @@ export const Viewer = {
     const targetDoc = S.activeDoc;
     const targetDocId = targetDoc.id;
     
-    const [{ IDB }, { STYLES }, { aiConvert }, { Sidebar }, { SB }] = await Promise.all([
+    const [{ IDB }, { STYLES }, { aiConvert }, { Sidebar }] = await Promise.all([
       import('../services/db.js'),
       import('../state/store.js'),
       import('../services/ai.js'),
-      import('./sidebar.js'),
-      import('../services/supabase.js')
+      import('./sidebar.js')
     ]);
 
     UI.toggleModal('reconv-mo', false);
@@ -269,9 +257,7 @@ export const Viewer = {
       await IDB.put('docs', targetDoc);
       const logEntry = { docId: targetDocId, ts: Date.now(), msg: `스타일 재변환 (${styleDef.name})`, delta };
       await IDB.put('logs', logEntry);
-      await SB.saveLog(targetDocId, logEntry);
-      await SB.saveDoc(targetDoc);
-      
+
       // Update UI only if the target document is still the active one
       if (S.activeDoc && S.activeDoc.id === targetDocId) {
         this.render();

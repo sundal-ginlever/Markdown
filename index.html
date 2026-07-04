@@ -43,24 +43,12 @@
     <button class="tb-gear" id="tb-gear-btn" title="설정" aria-label="설정">⚙️</button>
     <div class="tb-menu" id="tb-menu">
       <button class="key-btn" id="key-btn" data-i18n-title="api_key_btn" data-i18n-aria="aria_keys">🔑 <span class="key-lbl" data-i18n="api_key_btn">API 키</span></button>
-      <button class="cloud-btn" id="cloud-setup-btn" title="Supabase 클라우드 연결" data-i18n-aria="aria_sync">
-        ☁️ <span id="cloud-btn-lbl" data-i18n="sync_btn">클라우드</span>
-      </button>
       <div class="tb-menu-divider"></div>
       <div class="tb-menu-row">
         <span class="tb-menu-lbl">Language</span>
         <div class="lang-wrap">
           <button class="lang-btn" data-lang="ko" data-i18n-aria="aria_ko">KO</button>
           <button class="lang-btn" data-lang="en" data-i18n-aria="aria_en">EN</button>
-        </div>
-      </div>
-      <div class="tb-menu-row tb-user">
-        <div class="sync-dot off" id="sync-dot"></div>
-        <span class="sync-lbl" id="sync-lbl"></span>
-        <div class="user-avatar cloud-only" id="user-avatar" title="계정 메뉴" data-i18n-aria="aria_user">?</div>
-        <div class="rt-badge" id="rt-badge" title="실시간 동기화 활성" data-i18n-aria="aria_live">
-          <div class="rt-pulse"></div>
-          <span>LIVE</span>
         </div>
       </div>
     </div>
@@ -84,11 +72,8 @@
         <button class="sf" data-f="wiki" data-i18n-aria="aria_filter_wiki">🧠</button>
         <button class="sf" data-f="report" data-i18n-aria="aria_filter_report">📊</button>
         <button class="sf" data-f="custom" data-i18n-aria="aria_filter_custom">🎛️</button>
-        <button class="sf" data-f="fav" title="즐겨찾기">⭐</button>
         <select class="search-sort" id="search-sort" title="정렬" data-i18n-aria="aria_sort">
           <option value="new">최신순</option>
-          <option value="fav">⭐ 즐겨찾기순</option>
-          <option value="rel">관련도</option>
           <option value="old">오래된순</option>
           <option value="az">이름순</option>
         </select>
@@ -105,7 +90,6 @@
       <div class="sec-h" id="h-md">
         <span>🗒</span><span data-i18n="sec_md">변환된 문서</span>
         <span class="badge" id="md-cnt">0</span>
-        <button class="btn-new-f" data-i18n-title="btn_new_folder" data-i18n-aria="aria_new_folder">📁+</button>
         <span class="chv">▾</span>
       </div>
       <div class="fl" id="md-l"><div class="emp"><div class="ei">✨</div><span data-i18n="empty_md">변환된 문서가 없습니다</span></div></div>
@@ -129,7 +113,6 @@
         <button id="btn-clear-hl" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:11px;padding:0 2px" title="검색 초기화" data-i18n-aria="aria_clear_search">✕</button>
       </div>
       <div class="ta-wrap">
-        <button id="btn-fav-doc" style="background:none;border:none;cursor:pointer;font-size:16px;margin-right:8px;color:var(--t3);transition:0.2s">☆</button>
         <button class="tb" id="b-view" data-i18n="tab_preview">👁 미리보기</button>
         <button class="tb" id="b-edit" data-i18n="tab_edit">✏️ 편집</button>
         <button class="tb grn" id="b-save" style="display:none" data-i18n="tab_save">💾 저장</button>
@@ -137,34 +120,7 @@
         <button class="tb" id="b-reconv" title="다른 스타일로 재변환" data-i18n="tab_reconv">🔄 재변환</button>
         <button class="tb" id="b-copy" title="마크다운 복사" data-i18n="tab_copy">📋 복사</button>
         <button class="tb" id="b-export" title="내보내기" data-i18n="export_btn">내보내기</button>
-        <button class="tb" id="b-qa" title="AI에게 질문" data-i18n="qa_btn">질의응답</button>
         <button class="tb" id="b-log" data-i18n="tab_log">📋 로그</button>
-      </div>
-    </div>
-    
-    <div class="qa-panel" id="qa-panel">
-      <div class="qa-header">
-        <span class="qa-title" data-i18n="qa_btn">질의응답</span>
-        <span class="qa-model" id="qa-model-badge">Claude</span>
-        <button class="qa-btn-sm" id="qa-expand-btn" data-i18n-aria="aria_qa_expand">⤢</button>
-        <button class="qa-btn-sm danger" id="qa-clear-btn" data-i18n-aria="aria_qa_clear">↺ 초기화</button>
-        <button class="qa-btn-sm" id="qa-close-btn" data-i18n-aria="aria_close">✕</button>
-      </div>
-      <div class="qa-presets" id="qa-presets">
-        <button class="qa-preset" data-q="이 문서를 3줄로 요약해줘">📝 3줄 요약</button>
-        <button class="qa-preset" data-q="이 문서의 핵심 키워드를 추출해줘">🔑 키워드 추출</button>
-        <button class="qa-preset" data-q="이 내용을 바탕으로 이메일 초안을 작성해줘">📧 이메일 초안</button>
-        <button class="qa-preset" data-q="이 문서에서 액션 아이템을 정리해줘">✅ 액션 아이템</button>
-      </div>
-      <div class="qa-messages" id="qa-messages">
-        <div class="qa-empty" id="qa-empty">
-          <div class="qei">🤖</div>
-          <span data-i18n="qa_empty_ttl">문서에 대해 질문하세요</span>
-        </div>
-      </div>
-      <div class="qa-input-row">
-        <textarea id="qa-input" data-i18n-ph="qa_input_ph" placeholder="질문을 입력하세요..." rows="1" data-i18n-aria="aria_qa_input"></textarea>
-        <button class="qa-send" id="qa-send" data-i18n-aria="aria_qa_send">➤</button>
       </div>
     </div>
 
@@ -273,25 +229,6 @@
   </div>
 </div>
 
-<div class="ov" id="cloud-mo">
-  <div class="mo wide">
-    <div class="mo-ttl">
-      <span data-i18n="mo_cloud_ttl">Supabase 클라우드 동기화</span>
-      <span class="secure-badge" title="API 키는 이 브라우저에만 저장되며 서버로 전송되지 않습니다 (AES-GCM 암호화)">🔒 로컬 저장</span>
-    </div>
-    <div class="mo-sub" data-i18n="mo_cloud_sub">설정 정보는 암호화되어 안전하게 보관됩니다.</div>
-    <div class="kf-wrap">
-      <div class="fr"><label class="fl-lbl">SUPABASE PROJECT URL</label><input type="url" class="fi-inp" id="cloud-url" placeholder="https://xxxx.supabase.co"></div>
-      <div class="fr"><label class="fl-lbl">ANON PUBLIC KEY</label><input type="password" class="fi-inp" id="cloud-key" placeholder="eyJhbGciOiJIUzI1NiIsInR..."></div>
-    </div>
-    <div id="cloud-auth-section"></div>
-    <div class="mo-ft">
-      <button class="bg" id="btn-cloud-cancel">Cancel</button>
-      <button class="bp" id="btn-cloud-save">💾 Save</button>
-    </div>
-  </div>
-</div>
-
 <div class="ov" id="reconv-mo">
   <div class="mo wide">
     <div class="mo-ttl">
@@ -350,7 +287,7 @@
 
       <h3>5. AI 엔진 & 저장 위치</h3>
       <p>상단 <b>AI 엔진</b> 드롭다운에서 고른 엔진으로 변환됩니다(변환 완료 알림에 사용된 엔진 표시). 입력한 키가 있는 엔진을 선택하세요.</p>
-      <p>입력한 <b>원본</b>과 <b>변환된 문서</b>는 기본적으로 <b>이 브라우저(IndexedDB)</b>에 저장됩니다. ⚙️ → ☁️ 클라우드를 설정하면 본인 <b>Supabase</b>에도 동기화됩니다. 출력 언어는 상단 <b>KO/EN</b> 토글을 따릅니다.</p>
+      <p>입력한 <b>원본</b>과 <b>변환된 문서</b>는 <b>이 브라우저(IndexedDB)</b>에 저장됩니다. 출력 언어는 상단 <b>KO/EN</b> 토글을 따릅니다.</p>
 
       <h3>6. 비용 아끼기 💰</h3>
       <ul>
