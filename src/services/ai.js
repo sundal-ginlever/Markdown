@@ -11,32 +11,65 @@ function byokError() {
     : 'API key not set. Please enter your API key in ⚙️ Settings.');
 }
 
+// Dual-mode Claude request: streams via SSE when the proxy responds with
+// text/event-stream, and falls back to a single JSON parse otherwise (e.g. if
+// the hosting platform buffers the response). onDelta is optional.
+async function claudeRequest(body, signal, onDelta) {
+  const h = { 'Content-Type': 'application/json' };
+  if (S.ai.keys.claude) h['x-api-key'] = S.ai.keys.claude;
+
+  const r = await fetch('/api/claude', {
+    method: 'POST', headers: h, signal, body: JSON.stringify(body)
+  });
+  if (!r.ok) {
+    if (r.status === 401) throw byokError();
+    throw new Error(`Claude Proxy ${r.status}: ${await r.text()}`);
+  }
+
+  const ct = r.headers.get('content-type') || '';
+  if (!ct.includes('text/event-stream')) {
+    const d = await r.json();
+    return d.content.map(b => b.text || '').join('');
+  }
+
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '', full = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop(); // carry the last incomplete line into the next loop
+    for (const line of lines) {
+      if (!line.startsWith('data:')) continue;
+      const payload = line.slice(5).trim();
+      if (!payload) continue;
+      let ev;
+      try { ev = JSON.parse(payload); } catch { continue; }
+      if (ev.type === 'content_block_delta' && ev.delta?.text) {
+        full += ev.delta.text;
+        onDelta?.(ev.delta.text, full);
+      } else if (ev.type === 'error') {
+        throw new Error(ev.error?.message || 'Stream error');
+      }
+    }
+  }
+  return full;
+}
+
 // Convert a single chunk of text (or the whole document, if it fits in one chunk).
 async function aiConvertSingle(fname, fd, textOverride, styleDef, signal, directive, onDelta, customPrompt) {
   const p = S.ai.provider;
   const prompt = buildPrompt(fname, fd, textOverride, styleDef, customPrompt, directive);
 
   if (p === 'claude') {
-    const h = { 'Content-Type': 'application/json' };
-    if (S.ai.keys.claude) h['x-api-key'] = S.ai.keys.claude;
-
-    const r = await fetch('/api/claude', {
-      method: 'POST',
-      headers: h,
-      signal: signal,
-      body: JSON.stringify({
-        model: S.ai.models.claude || 'claude-haiku-4-5',
-        max_tokens: 8192,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    if (!r.ok) {
-      if (r.status === 401) throw byokError();
-      const errTxt = await r.text();
-      throw new Error(`Claude Proxy ${r.status}: ${errTxt}`);
-    }
-    const d = await r.json();
-    return d.content.map(b => b.text || '').join('');
+    return await claudeRequest({
+      model: S.ai.models.claude || 'claude-haiku-4-5',
+      max_tokens: 8192,
+      stream: true,
+      messages: [{ role: 'user', content: prompt }]
+    }, signal, onDelta);
   }
 
   if (p === 'gpt4') {

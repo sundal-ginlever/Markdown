@@ -166,6 +166,11 @@ function bindEvents() {
   // Close the current document and return to the home screen
   document.getElementById('b-home')?.addEventListener('click', () => Editor.close());
 
+  // Collapsible streaming-preview panel
+  document.getElementById('stream-preview-toggle')?.addEventListener('click', () => {
+    document.getElementById('stream-preview-box')?.classList.toggle('collapsed');
+  });
+
   // PWA install: show the titlebar button only when the browser offers install
   let deferredInstallPrompt = null;
   const installBtn = document.getElementById('pwa-install-btn');
@@ -540,14 +545,16 @@ async function processFile() {
 
         const customPrompt = localStorage.getItem('dv_custom_prompt') || '';
         const chunkCount = splitIntoChunks(fd.text || '').length;
+        resetStreamPreview();
         const onProgress = (ci, cn) => {
           const label = cn > 1
             ? (isKo ? `청크 ${ci}/${cn} 변환 중...` : `Converting chunk ${ci}/${cn}...`)
             : (isKo ? 'AI 변환 중...' : 'Converting...');
           UI.showPb(`${prefix}${label}`);
+          if (ci > 1) appendStreamDivider(ci, cn);
         };
         onProgress(1, chunkCount);
-        const mdc = await aiConvertChunked(file.name, fd, null, styleDef, signal, { onProgress, customPrompt });
+        const mdc = await aiConvertChunked(file.name, fd, null, styleDef, signal, { onProgress, onDelta: appendStreamDelta, customPrompt });
 
         const docId = 'md_' + Date.now().toString() + '_' + i;
         const doc = {
@@ -577,6 +584,7 @@ async function processFile() {
     }
 
     UI.hidePb();
+    hideStreamPreview();
     UploadModal.close();
 
     if (okCount > 0) {
@@ -597,6 +605,7 @@ async function processFile() {
       UI.toast('오류: ' + e.message, 'err');
     }
     UI.hidePb();
+    hideStreamPreview();
     if (okCount > 0) Sidebar.render();
   }
 }
@@ -626,6 +635,36 @@ window.updateStorageInfo = updateStorageInfo;
 function syncEngineBadge() {
   const badge = document.getElementById('qa-model-badge');
   if (badge) badge.textContent = providerLabel(S.ai.provider);
+}
+
+// --- Streaming conversion preview (Claude only) ---
+// D10: text-only updates via textContent — never innerHTML — to avoid XSS
+// from AI-generated content.
+function resetStreamPreview() {
+  const box = document.getElementById('stream-preview-box');
+  const pre = document.getElementById('dv-stream-preview');
+  if (pre) pre.textContent = '';
+  if (box) box.style.display = 'block';
+}
+function appendStreamDivider(ci, cn) {
+  const pre = document.getElementById('dv-stream-preview');
+  if (!pre || cn <= 1) return;
+  const isKo = S.lang === 'ko';
+  const label = isKo ? `\n\n--- 청크 ${ci}/${cn} ---\n` : `\n\n--- chunk ${ci}/${cn} ---\n`;
+  pre.textContent += label;
+  pre.scrollTop = pre.scrollHeight;
+}
+function appendStreamDelta(deltaText) {
+  const pre = document.getElementById('dv-stream-preview');
+  if (!pre) return;
+  pre.textContent += deltaText;
+  pre.scrollTop = pre.scrollHeight;
+}
+function hideStreamPreview() {
+  const box = document.getElementById('stream-preview-box');
+  const pre = document.getElementById('dv-stream-preview');
+  if (box) box.style.display = 'none';
+  if (pre) pre.textContent = '';
 }
 
 // Switch the home screen between file-upload and write-directly modes
@@ -676,13 +715,15 @@ async function processText() {
     const fd = { type: 'text', text, cnt: 0 };
     const title = deriveTitle(text);
     const customPrompt = localStorage.getItem('dv_custom_prompt') || '';
+    resetStreamPreview();
     const onProgress = (ci, cn) => {
       UI.showPb(cn > 1
         ? (isKo ? `청크 ${ci}/${cn} 변환 중...` : `Converting chunk ${ci}/${cn}...`)
         : (isKo ? 'AI 변환 중...' : 'Converting...'));
+      if (ci > 1) appendStreamDivider(ci, cn);
     };
     onProgress(1, splitIntoChunks(text).length);
-    const mdc = await aiConvertChunked(title + '.txt', fd, null, styleDef, signal, { onProgress, customPrompt });
+    const mdc = await aiConvertChunked(title + '.txt', fd, null, styleDef, signal, { onProgress, onDelta: appendStreamDelta, customPrompt });
 
     const docId = 'md_' + Date.now().toString();
     const doc = {
@@ -704,6 +745,7 @@ async function processText() {
 
     Sidebar.render();
     UI.hidePb();
+    hideStreamPreview();
     UI.toast((isKo ? '변환 완료' : 'Converted') + ' · ' + providerLabel(S.ai.provider), 'ok');
     if (ta) ta.value = '';
     Sidebar.openDoc(docId);
@@ -716,6 +758,7 @@ async function processText() {
       UI.toast('오류: ' + e.message, 'err');
     }
     UI.hidePb();
+    hideStreamPreview();
   }
 }
 

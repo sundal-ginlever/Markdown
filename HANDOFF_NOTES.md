@@ -6,6 +6,10 @@
 - `npm install`, `npm run dev`, `npm run build` 모두 정상. 취약점 경고(10건, npm audit)는 스코프 밖이라 미조치.
 - 빌드 경고: `main.js`가 `cloudModal.js`에서 동적 import되면서 동시에 `index.html`에서 정적 import됨 → Phase 2에서 `cloudModal.js` 삭제 시 자동 해소될 것으로 예상.
 
+## Phase 5
+- T3(스트리밍 점진적 표시) 검증은 실제 Claude API 스트림 응답이 필요해 이 환경에서 실행 불가(이전 Phase들과 동일한 로컬 제약). 코드 리뷰로 대체 확인: `claudeRequest()`가 응답 `content-type`으로 SSE/JSON을 분기하는 듀얼 모드이며, `onDelta`는 `main.js`의 `appendStreamDelta`/`appendStreamDivider`를 통해 `textContent`만 사용(D10 — innerHTML 미사용, XSS 방지)하도록 배선함. 배포 환경에서 실제 스트리밍 점진 표시와 "버퍼링 환경에서도 결과 정상 저장" 여부는 사용자가 확인 필요.
+- 스펙 step 4에 따라 재변환(`viewer.js`)에는 스트리밍 미리보기(`onDelta`)를 연결하지 않음(완료 후 렌더만) — 의도된 축소 범위.
+
 ## Phase 4
 - 청킹 알고리즘(`splitIntoChunks`)은 이 환경에서 실행 가능한 순수 함수라 Node로 직접 단위 검증함(60,000자 텍스트 → 3청크, 무손실 재결합, 마지막 문단 보존 확인; 빈 줄 없는 70,000자 단일 블록 → 하드 스플릿 3청크 확인). T1/T2/T11의 **실제 AI 변환 결과물** 검증(원문 마지막 페이지 내용이 출력에 포함되는지, 청크 진행 표시 UI 등)은 이전 Phase들과 동일한 이유로 이 환경에서 실행 불가 — 배포 환경에서 확인 필요.
 - 취소(T11) 구조 확인: 청크 루프 시작 시 `signal.aborted` 체크 + `fetch`의 `signal`로 인해 진행 중 취소 시 AbortError가 `aiConvertChunked`까지 전파되고 재시도 없이 즉시 throw됨. 문서 저장(`IDB.saveDoc`)은 변환 성공 후에만 실행되므로 부분 문서가 저장되지 않는 구조.
