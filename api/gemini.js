@@ -4,12 +4,10 @@ export default async function handler(req, res) {
   }
 
   const { model, contents, apiKey: bodyKey } = req.body;
-  const clientKey = bodyKey || req.query.key;
-  const serverKey = process.env.GOOGLE_API_KEY;
-  const apiKey = serverKey || clientKey;
+  const apiKey = bodyKey || req.query.key;
 
   if (!apiKey) {
-    return res.status(400).json({ error: 'API Key is missing' });
+    return res.status(401).json({ error: 'API key required (BYOK). Settings에서 키를 설정하세요.' });
   }
 
   const modelId = model || 'gemini-1.5-pro';

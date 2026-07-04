@@ -5,15 +5,14 @@ export default async function handler(req, res) {
 
   const { model, messages, max_tokens, temperature } = req.body;
   const authHeader = req.headers['authorization'];
-  const serverKey = process.env.OPENAI_API_KEY;
-  
-  let apiKey = serverKey;
-  if (!apiKey && authHeader && authHeader.startsWith('Bearer ')) {
+
+  let apiKey = null;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
     apiKey = authHeader.substring(7);
   }
 
   if (!apiKey) {
-    return res.status(400).json({ error: 'API Key is missing' });
+    return res.status(401).json({ error: 'API key required (BYOK). Settings에서 키를 설정하세요.' });
   }
 
   try {

@@ -4,12 +4,10 @@ export default async function handler(req, res) {
   }
 
   const { model, max_tokens, system, messages, stream } = req.body;
-  const clientKey = req.headers['x-api-key'];
-  const serverKey = process.env.ANTHROPIC_API_KEY;
-  const apiKey = serverKey || clientKey;
+  const apiKey = req.headers['x-api-key'];
 
   if (!apiKey) {
-    return res.status(400).json({ error: 'API Key is missing' });
+    return res.status(401).json({ error: 'API key required (BYOK). Settings에서 키를 설정하세요.' });
   }
 
   try {

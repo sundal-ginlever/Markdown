@@ -3,6 +3,14 @@
  */
 import { S } from '../state/store.js';
 
+// BYOK-only backend: every proxy returns 401 when no client key was sent.
+// Surface one clear, localized message instead of raw proxy JSON/text.
+function byokError() {
+  return new Error(S.lang === 'ko'
+    ? 'API 키가 설정되지 않았습니다. ⚙️ 설정에서 API 키를 입력하세요.'
+    : 'API key not set. Please enter your API key in ⚙️ Settings.');
+}
+
 export async function aiConvert(fname, fd, textOverride, styleDef, signal) {
   const p = S.ai.provider;
   const prompt = buildPrompt(fname, fd, textOverride, styleDef);
@@ -22,6 +30,7 @@ export async function aiConvert(fname, fd, textOverride, styleDef, signal) {
       })
     });
     if (!r.ok) {
+      if (r.status === 401) throw byokError();
       const errTxt = await r.text();
       throw new Error(`Claude Proxy ${r.status}: ${errTxt}`);
     }
@@ -43,7 +52,10 @@ export async function aiConvert(fname, fd, textOverride, styleDef, signal) {
         max_tokens: 4096
       })
     });
-    if (!r.ok) throw new Error(`OpenAI Proxy ${r.status}`);
+    if (!r.ok) {
+      if (r.status === 401) throw byokError();
+      throw new Error(`OpenAI Proxy ${r.status}`);
+    }
     const d = await r.json();
     return d.choices[0].message.content;
   }
@@ -60,6 +72,7 @@ export async function aiConvert(fname, fd, textOverride, styleDef, signal) {
       })
     });
     if (!r.ok) {
+      if (r.status === 401) throw byokError();
       const errJson = await r.json().catch(() => ({}));
       throw new Error(`Gemini Proxy ${r.status}: ${errJson.error?.message || 'Unknown error'}`);
     }
