@@ -247,7 +247,8 @@ export const Viewer = {
         text = String(rawRes.data);
       }
       
-      const mdc = await aiConvert(rawRes.name, { type: rawRes.type, cnt: 0, text: text }, text, styleDef, signal);
+      const customPrompt = localStorage.getItem('dv_custom_prompt') || '';
+      const mdc = await aiConvert(rawRes.name, { type: rawRes.type, cnt: 0, text: text }, text, styleDef, signal, customPrompt);
       
       const delta = mdc.length - targetDoc.content.length;
       targetDoc.content = mdc;

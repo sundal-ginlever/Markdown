@@ -73,11 +73,35 @@ export const UploadModal = {
       S.selectedStyle = card.dataset.id;
       localStorage.setItem('dv_style', card.dataset.id);
       this.renderStyles();
+      this.updateCustomPromptVisibility();
     };
     document.getElementById('style-grid')?.addEventListener('click', onStylePick);
     document.getElementById('wlc-style-grid')?.addEventListener('click', onStylePick);
 
+    // Custom style prompt: shared value across modal + home, persisted to localStorage
+    const savedPrompt = localStorage.getItem('dv_custom_prompt') || '';
+    ['custom-prompt', 'wlc-custom-prompt'].forEach(id => {
+      const ta = document.getElementById(id);
+      if (!ta) return;
+      ta.value = savedPrompt;
+      ta.addEventListener('input', () => {
+        localStorage.setItem('dv_custom_prompt', ta.value);
+        // Keep the other textarea (modal vs. home) in sync
+        const other = document.getElementById(id === 'custom-prompt' ? 'wlc-custom-prompt' : 'custom-prompt');
+        if (other && other.value !== ta.value) other.value = ta.value;
+      });
+    });
+
     this.renderStyles();
+    this.updateCustomPromptVisibility();
+  },
+
+  updateCustomPromptVisibility() {
+    const show = S.selectedStyle === 'custom';
+    ['custom-prompt-wrap', 'wlc-custom-prompt-wrap'].forEach(id => {
+      const wrap = document.getElementById(id);
+      if (wrap) wrap.style.display = show ? 'block' : 'none';
+    });
   },
 
   renderStyles() {

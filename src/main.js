@@ -540,7 +540,8 @@ async function processFile() {
         }
 
         UI.showPb(`${prefix}${isKo ? 'AI 변환 중...' : 'Converting...'}`);
-        const mdc = await aiConvert(file.name, fd, null, styleDef, signal);
+        const customPrompt = localStorage.getItem('dv_custom_prompt') || '';
+        const mdc = await aiConvert(file.name, fd, null, styleDef, signal, customPrompt);
 
         const docId = 'md_' + Date.now().toString() + '_' + i;
         const doc = {
@@ -669,7 +670,8 @@ async function processText() {
     UI.showPb(isKo ? 'AI 변환 중...' : 'Converting...');
     const fd = { type: 'text', text, cnt: 0 };
     const title = deriveTitle(text);
-    const mdc = await aiConvert(title + '.txt', fd, null, styleDef, signal);
+    const customPrompt = localStorage.getItem('dv_custom_prompt') || '';
+    const mdc = await aiConvert(title + '.txt', fd, null, styleDef, signal, customPrompt);
 
     const docId = 'md_' + Date.now().toString();
     const doc = {

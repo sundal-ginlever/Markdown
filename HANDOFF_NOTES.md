@@ -6,6 +6,10 @@
 - `npm install`, `npm run dev`, `npm run build` 모두 정상. 취약점 경고(10건, npm audit)는 스코프 밖이라 미조치.
 - 빌드 경고: `main.js`가 `cloudModal.js`에서 동적 import되면서 동시에 `index.html`에서 정적 import됨 → Phase 2에서 `cloudModal.js` 삭제 시 자동 해소될 것으로 예상.
 
+## Phase 3
+- Phase 2에서 Q&A 기능(qaPanel.js 등) 삭제 시 `src/services/ai.js`의 `callQAApi()`(약 145줄)가 호출부 없는 죽은 코드로 남아있던 것을 발견. Phase 3에서 이 파일(ai.js)을 어차피 수정하므로 함께 제거함. (원래 Phase 2 완료 기준에는 없었으나, "핵심 작업 파일"인 ai.js를 정리하는 김에 처리 — 새 기능 추가가 아닌 이전 단계의 정리 누락 보완.)
+- **완료 기준 검증 한계**: "커스텀 스타일 + 프롬프트 입력 → 출력에 반영" 검증은 실제 AI 응답이 필요한데, 이 환경에서는 `/api/*` 서버리스 함수를 로컬 실행할 수 없음(Phase 0/2와 동일한 제약). 대신 코드 경로를 직접 추적해 확인함: `uploadModal.js`가 `#custom-prompt`/`#wlc-custom-prompt` 값을 `localStorage['dv_custom_prompt']`에 저장 → `main.js`의 `processFile`/`processText`와 `viewer.js`의 `startReconv` 3곳 모두 그 값을 읽어 `aiConvert(..., customPrompt)`로 전달 → `ai.js`의 `buildPrompt`가 `styleDef.id === 'custom'`일 때 그 값을 시스템 프롬프트로 사용함을 확인. 실제 프롬프트 반영 여부는 배포 환경에서 사용자가 직접 확인 필요.
+
 ## Phase 2
 - `src/components/sidebar.js`의 `import { Viewer } from './viewer.js'`는 이번 작업 이전부터 미사용(pre-existing dead import)이었음. Phase 2 변경과 무관하여 그대로 둠 (스코프 밖 리팩토링 금지 규칙).
 - `src/services/db.js`의 `switchUser(userId)` 메서드는 Supabase 멀티유저 전환용이었고 이제 호출부가 없어 죽은 코드가 됨. D4(IndexedDB 스키마 불변)와 별개로 메서드 자체는 핸드오프에 명시적 제거 대상이 아니라 그대로 둠.
