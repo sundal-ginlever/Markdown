@@ -5,7 +5,7 @@ import { S, STYLES, SEARCH } from './state/store.js';
 import { I18N, t, setLang, renderI18N } from './utils/i18n.js';
 import { decrypt, encrypt } from './utils/crypto.js';
 import { IDB } from './services/db.js';
-import { aiConvert } from './services/ai.js';
+import { aiConvertChunked, splitIntoChunks } from './services/ai.js';
 import { parseSheet, sheetsToText } from './utils/xlsxExtractor.js';
 import { extractPdf } from './utils/pdfExtractor.js';
 import { extractDocx } from './utils/docxExtractor.js';
@@ -476,11 +476,14 @@ const MODEL_PRICES = {
 };
 
 function estimateConversion(files, model) {
-  let inTok = 0, outTok = 0;
+  let inTok = 0, outTok = 0, chunkCount = 0;
   for (const f of files) {
-    // App truncates source text at 30,000 chars (~7,500 tokens); size/4 ≈ chars→tokens
-    inTok += Math.min(Math.ceil(f.size / 4), 7500) + 400; // +system prompt
-    outTok += 2500; // typical converted-markdown output
+    // Long documents are split into ~24,000-char chunks and converted sequentially;
+    // size/4 ≈ chars→tokens. Output is bounded per-chunk at max_tokens (8192).
+    const chunks = Math.max(1, Math.ceil(f.size / 24000));
+    chunkCount += chunks;
+    inTok += Math.ceil(f.size / 4) + 400 * chunks; // + per-chunk system prompt overhead
+    outTok += 8192 * chunks; // conservative per-chunk output ceiling
   }
   const price = MODEL_PRICES[model];
   let costText = null;
@@ -488,7 +491,7 @@ function estimateConversion(files, model) {
     const cost = (inTok * price[0] + outTok * price[1]) / 1e6;
     costText = '$' + cost.toFixed(cost < 0.1 ? 3 : 2);
   }
-  return { tokens: inTok + outTok, costText };
+  return { tokens: inTok + outTok, costText, chunkCount };
 }
 
 async function processFile() {
@@ -508,8 +511,8 @@ async function processFile() {
       ? (isKo ? `\n예상 비용: 약 ${est.costText}` : `\nEst. cost: ~${est.costText}`)
       : (isKo ? '\n(이 모델은 비용 추정을 지원하지 않습니다)' : '\n(cost estimate unavailable for this model)');
     const msg = isKo
-      ? `${files.length}개 파일을 변환합니다.\n모델: ${model}\n예상 토큰: 약 ${tokStr} (대략치)${costPart}\n\n진행할까요?`
-      : `Converting ${files.length} file(s).\nModel: ${model}\nEst. tokens: ~${tokStr} (rough)${costPart}\n\nProceed?`;
+      ? `${files.length}개 파일을 변환합니다.\n모델: ${model}\n예상 청크: ${est.chunkCount}개\n예상 토큰: 약 ${tokStr} (대략치)${costPart}\n\n진행할까요?`
+      : `Converting ${files.length} file(s).\nModel: ${model}\nEst. chunks: ${est.chunkCount}\nEst. tokens: ~${tokStr} (rough)${costPart}\n\nProceed?`;
     if (!confirm(msg)) return;
   }
 
@@ -535,13 +538,16 @@ async function processFile() {
         UI.showPb(`${prefix}${isKo ? '파일 분석 중' : 'Analyzing'}: ${file.name}`);
         const fd = await extractFileData(file, signal);
 
-        if (fd.text && fd.text.length > 30000) {
-          UI.toast((isKo ? `${file.name}: 문서가 너무 길어 일부만 전송됩니다.` : `${file.name}: too long, only a portion processed.`), 'warn');
-        }
-
-        UI.showPb(`${prefix}${isKo ? 'AI 변환 중...' : 'Converting...'}`);
         const customPrompt = localStorage.getItem('dv_custom_prompt') || '';
-        const mdc = await aiConvert(file.name, fd, null, styleDef, signal, customPrompt);
+        const chunkCount = splitIntoChunks(fd.text || '').length;
+        const onProgress = (ci, cn) => {
+          const label = cn > 1
+            ? (isKo ? `청크 ${ci}/${cn} 변환 중...` : `Converting chunk ${ci}/${cn}...`)
+            : (isKo ? 'AI 변환 중...' : 'Converting...');
+          UI.showPb(`${prefix}${label}`);
+        };
+        onProgress(1, chunkCount);
+        const mdc = await aiConvertChunked(file.name, fd, null, styleDef, signal, { onProgress, customPrompt });
 
         const docId = 'md_' + Date.now().toString() + '_' + i;
         const doc = {
@@ -667,11 +673,16 @@ async function processText() {
 
   const styleDef = STYLES.find(s => s.id === S.selectedStyle) || STYLES[0];
   try {
-    UI.showPb(isKo ? 'AI 변환 중...' : 'Converting...');
     const fd = { type: 'text', text, cnt: 0 };
     const title = deriveTitle(text);
     const customPrompt = localStorage.getItem('dv_custom_prompt') || '';
-    const mdc = await aiConvert(title + '.txt', fd, null, styleDef, signal, customPrompt);
+    const onProgress = (ci, cn) => {
+      UI.showPb(cn > 1
+        ? (isKo ? `청크 ${ci}/${cn} 변환 중...` : `Converting chunk ${ci}/${cn}...`)
+        : (isKo ? 'AI 변환 중...' : 'Converting...'));
+    };
+    onProgress(1, splitIntoChunks(text).length);
+    const mdc = await aiConvertChunked(title + '.txt', fd, null, styleDef, signal, { onProgress, customPrompt });
 
     const docId = 'md_' + Date.now().toString();
     const doc = {

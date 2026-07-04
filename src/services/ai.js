@@ -11,9 +11,10 @@ function byokError() {
     : 'API key not set. Please enter your API key in ⚙️ Settings.');
 }
 
-export async function aiConvert(fname, fd, textOverride, styleDef, signal, customPrompt) {
+// Convert a single chunk of text (or the whole document, if it fits in one chunk).
+async function aiConvertSingle(fname, fd, textOverride, styleDef, signal, directive, onDelta, customPrompt) {
   const p = S.ai.provider;
-  const prompt = buildPrompt(fname, fd, textOverride, styleDef, customPrompt);
+  const prompt = buildPrompt(fname, fd, textOverride, styleDef, customPrompt, directive);
 
   if (p === 'claude') {
     const h = { 'Content-Type': 'application/json' };
@@ -25,7 +26,7 @@ export async function aiConvert(fname, fd, textOverride, styleDef, signal, custo
       signal: signal,
       body: JSON.stringify({
         model: S.ai.models.claude || 'claude-haiku-4-5',
-        max_tokens: 4096,
+        max_tokens: 8192,
         messages: [{ role: 'user', content: prompt }]
       })
     });
@@ -49,7 +50,7 @@ export async function aiConvert(fname, fd, textOverride, styleDef, signal, custo
       body: JSON.stringify({
         model: S.ai.models.gpt4,
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 4096
+        max_tokens: 8192
       })
     });
     if (!r.ok) {
@@ -104,7 +105,7 @@ export async function aiConvert(fname, fd, textOverride, styleDef, signal, custo
   throw new Error('Unknown provider');
 }
 
-function buildPrompt(fname, fd, textOverride, styleDef, customPrompt) {
+function buildPrompt(fname, fd, textOverride, styleDef, customPrompt, extraDirective) {
   const ext = fname.split('.').pop().toLowerCase();
   const isSh = fd.type === 'sheet';
   const cnt = fd.cnt || 0;
@@ -123,22 +124,91 @@ function buildPrompt(fname, fd, textOverride, styleDef, customPrompt) {
     systemPrompt = styleDef.prompt(fname + fileCtx, ext, isSh, cnt);
   }
 
-  let isTruncated = false;
-  let textToConvert = textOverride || fd.text;
-  if (textToConvert.length > 30000) {
-    textToConvert = textToConvert.substring(0, 30000);
-    isTruncated = true;
-  }
+  const textToConvert = textOverride || fd.text;
 
   const langDirective = S.lang === 'ko'
     ? '\n\n[OUTPUT LANGUAGE] Write the ENTIRE output document in Korean (한국어), regardless of the source language. Keep code, identifiers, URLs, and proper nouns as-is.'
     : '\n\n[OUTPUT LANGUAGE] Write the entire output document in English.';
 
-  return `${systemPrompt}${langDirective}
-${isTruncated ? '\n[SYSTEM WARNING: The original document was too long and has been truncated. Please convert the provided portion and note that it is incomplete.]\n' : ''}
+  return `${systemPrompt}${langDirective}${extraDirective || ''}
 ---
 CONTENT TO CONVERT:
 ${textToConvert}
 ---`;
+}
+
+// Split text into chunks along paragraph (blank-line) boundaries, greedily
+// packing each chunk up to ~`target` characters. Falls back to a hard split
+// for a single overlong block with no blank lines (e.g. a huge table).
+const CHUNK_TARGET = 24000;
+
+export function splitIntoChunks(text, target = CHUNK_TARGET) {
+  if (!text || text.length <= target) return [text || ''];
+  const paras = text.split(/\n{2,}/);
+  const chunks = [];
+  let buf = '';
+  for (const p of paras) {
+    const piece = p.trim();
+    if (!piece) continue;
+    if (piece.length > target) {
+      if (buf) { chunks.push(buf); buf = ''; }
+      for (let i = 0; i < piece.length; i += target) {
+        chunks.push(piece.slice(i, i + target));
+      }
+      continue;
+    }
+    if (buf.length + piece.length + 2 > target) {
+      chunks.push(buf);
+      buf = piece;
+    } else {
+      buf = buf ? buf + '\n\n' + piece : piece;
+    }
+  }
+  if (buf) chunks.push(buf);
+  return chunks;
+}
+
+// Build the per-chunk instruction telling the model which part of the
+// document it's converting, so multi-chunk output stitches together cleanly.
+function chunkDirective(i, n, prevTail) {
+  if (n === 1) return '';
+  let d = `\n\n[CHUNK ${i + 1}/${n}] This is part ${i + 1} of ${n} of ONE document. Convert ONLY this part.`;
+  if (i === 0) {
+    d += ' Start the document normally (title/frontmatter allowed). Do NOT write a conclusion or closing summary.';
+  } else if (i === n - 1) {
+    d += ' Do NOT repeat the document title or frontmatter. Continue seamlessly from the previous part. You MAY write the closing section.';
+  } else {
+    d += ' Do NOT repeat the title/frontmatter. Do NOT write a conclusion. Continue seamlessly.';
+  }
+  if (prevTail) {
+    d += `\n[PREVIOUS OUTPUT TAIL — continuity reference only, do NOT repeat it]:\n...${prevTail}`;
+  }
+  return d;
+}
+
+// Convert an arbitrarily long document by splitting it into chunks and
+// converting each in sequence (never parallel — each chunk's prompt carries
+// continuity context from the previous chunk's output).
+export async function aiConvertChunked(fname, fd, textOverride, styleDef, signal, hooks = {}) {
+  const { onProgress, onDelta, customPrompt } = hooks;
+  const fullText = textOverride || fd.text || '';
+  const chunks = splitIntoChunks(fullText);
+  const out = [];
+  for (let i = 0; i < chunks.length; i++) {
+    if (signal?.aborted) throw new Error('Cancelled');
+    onProgress?.(i + 1, chunks.length);
+    const prevTail = i > 0 ? out[i - 1].slice(-400) : '';
+    const directive = chunkDirective(i, chunks.length, prevTail);
+    let md;
+    try {
+      md = await aiConvertSingle(fname, fd, chunks[i], styleDef, signal, directive, onDelta, customPrompt);
+    } catch (e) {
+      if (e.name === 'AbortError' || e.message === 'Cancelled') throw e;
+      // Single retry; a second failure propagates to the caller's per-file error handling.
+      md = await aiConvertSingle(fname, fd, chunks[i], styleDef, signal, directive, onDelta, customPrompt);
+    }
+    out.push((md || '').trim());
+  }
+  return out.join('\n\n');
 }
 

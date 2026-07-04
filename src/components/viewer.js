@@ -212,7 +212,7 @@ export const Viewer = {
     const targetDoc = S.activeDoc;
     const targetDocId = targetDoc.id;
     
-    const [{ IDB }, { STYLES }, { aiConvert }, { Sidebar }] = await Promise.all([
+    const [{ IDB }, { STYLES }, { aiConvertChunked }, { Sidebar }] = await Promise.all([
       import('../services/db.js'),
       import('../state/store.js'),
       import('../services/ai.js'),
@@ -248,7 +248,11 @@ export const Viewer = {
       }
       
       const customPrompt = localStorage.getItem('dv_custom_prompt') || '';
-      const mdc = await aiConvert(rawRes.name, { type: rawRes.type, cnt: 0, text: text }, text, styleDef, signal, customPrompt);
+      const isKo = S.lang === 'ko';
+      const onProgress = (ci, cn) => {
+        if (cn > 1) UI.showPb(isKo ? `청크 ${ci}/${cn} 재변환 중...` : `Reconverting chunk ${ci}/${cn}...`);
+      };
+      const mdc = await aiConvertChunked(rawRes.name, { type: rawRes.type, cnt: 0, text: text }, text, styleDef, signal, { onProgress, customPrompt });
       
       const delta = mdc.length - targetDoc.content.length;
       targetDoc.content = mdc;

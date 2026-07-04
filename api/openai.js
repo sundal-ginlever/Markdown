@@ -25,7 +25,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: model || 'gpt-4o',
         messages,
-        max_tokens: max_tokens || 4096,
+        max_tokens: max_tokens || 8192,
         temperature: temperature || 0.7
       })
     });
